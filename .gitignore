@@ -73,3 +73,14 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# JetBrains Rider / IntelliJ
+.idea/
+
+# 외부 에셋 보관용 폴더 (Git 관리 제외)
+/Assets/Resources/Externals/
+/Assets/Resources/Externals.meta
+
+# Claude Code
+CLAUDE.md
+.claude/
