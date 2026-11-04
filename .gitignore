@@ -78,11 +78,12 @@ crashlytics-build.properties
 .idea/
 
 # 외부 에셋 보관용 폴더 (Git 관리 제외)
-/Assets/Resources/Externals/
-/Assets/Resources/Externals.meta
 /Assets/Externals/
 /Assets/Externals.meta
 
 # Claude Code
 CLAUDE.md
 .claude/
+
+# 게임 기획 문서
+/docs/
