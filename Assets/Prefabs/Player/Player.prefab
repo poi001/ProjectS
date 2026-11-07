@@ -180,6 +180,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _jumpBufferTime: 0.25
   _attackBufferTime: 0.25
+  _dashBufferTime: 0.25
 --- !u!114 &9105014987773638855
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -223,6 +224,14 @@ MonoBehaviour:
   _showHitRange: 0
   _stats: {fileID: 11400000, guid: c4a968b715b9fae41b29771d239b8bed, type: 2}
   _coyoteTime: 0.1
+  _airJumpHeightRatio: 1
+  _wallSlideSpeed: 2
+  _wallJumpSpeedX: 7
+  _wallJumpHeightRatio: 1
+  _wallJumpInputLockTime: 0.15
+  _dashSpeed: 15
+  _dashDuration: 0.25
+  _dashCooldown: 0.5
   _comboAttacks:
   - _damageMultiplier: 1
     _hitbox:
@@ -329,8 +338,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: 51424454
+  m_SortingLayer: 2
   m_SortingOrder: 0
   m_Sprite: {fileID: 3447589828770737623, guid: b48c676687c99a242994ac160342bd40, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
