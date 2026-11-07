@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06ab26ff49c2bbe4ab476e1a670e4ff9, type: 3}
+  m_Name: KO_Boss
+  m_EditorClassIdentifier: 
+  _clips:
+  - {fileID: 8300000, guid: 4c0da11f2d7bee04a8b70228f5f3453a, type: 3}
+  _volume: 1
+  _minPitch: 1
+  _maxPitch: 1
+  _minInterval: 0

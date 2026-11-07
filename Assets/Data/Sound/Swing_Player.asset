@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06ab26ff49c2bbe4ab476e1a670e4ff9, type: 3}
+  m_Name: Swing_Player
+  m_EditorClassIdentifier: 
+  _clips:
+  - {fileID: 8300000, guid: bd7616d47190a6b489253e205b34445f, type: 3}
+  _volume: 1
+  _minPitch: 1
+  _maxPitch: 1
+  _minInterval: 0
