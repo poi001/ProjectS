@@ -1,4 +1,4 @@
-// 공중에 있는 상태. 착지하면 Idle/Run으로 전환한다.
+// 공중에 있는 상태. 착지하면 Idle/Run으로 전환한다. 떨어지는 중에는 대시, 공중 점프, 점프 공격, 벽타기로 전환할 수 있다.
 public class PlayerFallState : PlayerState
 {
     public PlayerFallState(Player owner, StateMachine<Player> stateMachine)
@@ -28,7 +28,7 @@ public class PlayerFallState : PlayerState
             return;
         }
 
-        TryChangeToJumpAttackState();
+        TryChangeFromAirborneState();
     }
 
     public override void PhysicsUpdate()

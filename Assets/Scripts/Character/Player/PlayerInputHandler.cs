@@ -1,17 +1,20 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// New Input System(PlayerInputActions)으로부터 키 입력을 받고, 점프/공격 입력을 버퍼에 보관한다.
+// New Input System(PlayerInputActions)으로부터 키 입력을 받고, 점프/공격/대시 입력을 버퍼에 보관한다.
 // 버퍼: 입력이 조금 일찍 들어와도 버퍼 시간 안에 실행 가능해지면 처리되도록 마지막 입력 시각을 기억한다.
 public class PlayerInputHandler : MonoBehaviour
 {
     [Header("입력 버퍼")]
     [SerializeField] private float _jumpBufferTime = 0.25f;
     [SerializeField] private float _attackBufferTime = 0.25f;
+    [Tooltip("대시 입력을 기억해 두는 시간입니다. 대시를 쓸 수 없을 때(쿨타임 등) 눌러도 이 시간 안에 쓸 수 있게 되면 대시합니다. (단위: 초)")]
+    [SerializeField] private float _dashBufferTime = 0.25f;
 
     private PlayerInputActions _inputActions;
     private float _lastJumpPressedTime = float.NegativeInfinity;
     private float _lastAttackPressedTime = float.NegativeInfinity;
+    private float _lastDashPressedTime = float.NegativeInfinity;
 
     public float MoveInput { get; private set; }
 
@@ -20,6 +23,9 @@ public class PlayerInputHandler : MonoBehaviour
 
     // 공격 버퍼 시간 안에 눌린 공격 입력이 아직 소비되지 않고 남아 있는지 여부
     public bool HasBufferedAttack => IsAttackBuffered(0f);
+
+    // 대시 버퍼 시간 안에 눌린 대시 입력이 아직 소비되지 않고 남아 있는지 여부
+    public bool HasBufferedDash => Time.time - _lastDashPressedTime <= _dashBufferTime;
 
     private void Awake()
     {
@@ -32,6 +38,7 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Player.Move.canceled += OnMove;
         _inputActions.Player.Jump.started += OnJump;
         _inputActions.Player.Attack.started += OnAttack;
+        _inputActions.Player.Dash.started += OnDash;
         _inputActions.Player.Enable();
     }
 
@@ -42,9 +49,11 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Player.Move.canceled -= OnMove;
         _inputActions.Player.Jump.started -= OnJump;
         _inputActions.Player.Attack.started -= OnAttack;
+        _inputActions.Player.Dash.started -= OnDash;
         MoveInput = 0f;
         ConsumeJumpBuffer();
         ConsumeAttackBuffer();
+        ConsumeDashBuffer();
     }
 
     private void OnDestroy()
@@ -70,6 +79,12 @@ public class PlayerInputHandler : MonoBehaviour
         _lastAttackPressedTime = float.NegativeInfinity;
     }
 
+    // 대시 입력을 소비한다. 한 번의 입력으로 중복 대시하지 않도록 한다.
+    public void ConsumeDashBuffer()
+    {
+        _lastDashPressedTime = float.NegativeInfinity;
+    }
+
     private void OnMove(InputAction.CallbackContext context)
     {
         MoveInput = context.ReadValue<float>();
@@ -83,5 +98,10 @@ public class PlayerInputHandler : MonoBehaviour
     private void OnAttack(InputAction.CallbackContext context)
     {
         _lastAttackPressedTime = Time.time;
+    }
+
+    private void OnDash(InputAction.CallbackContext context)
+    {
+        _lastDashPressedTime = Time.time;
     }
 }

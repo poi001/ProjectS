@@ -11,6 +11,9 @@ public class PlayerAnimation : CharacterAnimation
     public static readonly int JumpAttack = Animator.StringToHash("JumpAttack");
     public static readonly int JumpAttackEnd = Animator.StringToHash("JumpAttack_End");
     public static readonly int Hit = Animator.StringToHash("Hit");
+    public static readonly int WallSlide = Animator.StringToHash("WallSlide");
+    public static readonly int WallJump = Animator.StringToHash("WallJump");
+    public static readonly int Dash = Animator.StringToHash("Dash");
     public static readonly int Dead = Animator.StringToHash("Dead");
 
     private int[] _comboHashes = new int[0];
