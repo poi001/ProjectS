@@ -373,7 +373,7 @@ MonoBehaviour:
   _comboChance: 0.5
   _wallClimbChance: 0.5
   _rollChance: 0.5
-  _idleDuration: 1
+  _idleDuration: 2
   _attackStepSpeed: 3
   _attackSwings:
   - _hitStartTime: 0.545

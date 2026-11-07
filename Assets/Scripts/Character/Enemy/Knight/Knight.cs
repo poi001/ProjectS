@@ -18,7 +18,7 @@ public class Knight : Enemy
     [Tooltip("공격 1회/2회가 끝난 뒤 Idle 없이 바로 구르기를 시전할 확률입니다. 구르기를 하지 않으면 Idle로 갑니다.\n구르기 직후에 이어진 공격 뒤에는 이 확률과 관계없이 구르기를 하지 않습니다.")]
     [SerializeField, Range(0f, 1f)] private float _rollChance = 0.5f;
     [Tooltip("패턴이 하나 끝난 뒤 Idle로 쉬어가는 시간입니다. 쉬는 동안 플레이어가 공격할 틈이 생깁니다. (단위: 초)\nIdle 없이 이어지는 경우(공격 뒤 구르기, 구르기 뒤 공격, 점프 뒤 공격)에는 쉬지 않습니다.")]
-    [SerializeField, Min(0f)] private float _idleDuration = 1f;
+    [SerializeField, Min(0f)] private float _idleDuration = 2f;
 
     // 공격 클립(Knight_Attack, Knight_AttackCombo)은 칼을 휘두르기 전 준비 프레임을 0.3초 멈춰 두고 휘두름만 12fps로 재생한다.
     // 휘두름의 시작 시점은 클립의 휘두름 시작에 맞춘 값이다. 클립의 프레임 시간을 바꾸면 함께 맞춰야 한다.
