@@ -28,6 +28,9 @@ public class CameraAspectFitter : MonoBehaviour
     private int _lastScreenWidth;
     private int _lastScreenHeight;
 
+    // 목표 화면 비율(가로/세로). 배경처럼 카메라가 보여 주는 영역의 크기를 계산해야 하는 곳에서 읽는다.
+    public float TargetAspect => _targetWidth / _targetHeight;
+
     private void Awake()
     {
         _camera = GetComponent<Camera>();

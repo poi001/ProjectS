@@ -34,7 +34,7 @@ public class AttackHitChecker
         _contactFilter.useTriggers = true;
     }
 
-    // 맞힌 대상 기록을 비운다. 새 공격(타격 이벤트, 휘두름 판정 구간 시작, 슬라이딩 충격 직전 등)을 시작할 때 호출한다.
+    // 맞힌 대상 기록을 비운다. 새 공격(타격 이벤트, 휘두름 판정 구간 시작, 드롭킥 충격 직전, 슬라이딩 시작 등)을 시작할 때 호출한다.
     public void ResetHitTargets()
     {
         _hitTargets.Clear();

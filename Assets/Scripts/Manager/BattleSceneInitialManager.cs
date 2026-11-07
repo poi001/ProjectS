@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 // 전투 씬 시작 흐름을 담당한다. BattleManagers에 포함되어 전투 씬에만 존재한다.
-// 순서: 다른 전투 매니저 준비 대기 → 전투 구성 받기 → 캐릭터 생성 → 정해진 순서로 Init(플레이어 → 보스) → 체력바 연결 → BattleReadyEvent 발행
+// 순서: 다른 전투 매니저 준비 대기 → 전투 구성 받기 → 캐릭터 생성 → 정해진 순서로 Init(플레이어 → 보스) → 체력바·보스 패턴 게이지 연결 → BattleReadyEvent 발행
 // 캐릭터는 Awake/Start에서 스스로 초기화하지 않으므로, 이 흐름이 끝나야 전투가 시작된다.
 // 로딩 화면 등은 BattleReadyEvent(또는 IsReady)를 기다렸다가 닫는다.
 // 전투 구성(어떤 플레이어·보스인지)은 원래 아웃게임에서 받아오지만, 아직 없으므로 인스펙터에 연결한 프리팹을 임시로 쓴다.
@@ -30,6 +30,9 @@ public class BattleSceneInitialManager : MonoBehaviour
 
     [Tooltip("소환한 보스의 체력을 표시할 체력바입니다. 비워 두면 연결하지 않습니다.")]
     [SerializeField] private HPBar _bossHPBar;
+
+    [Tooltip("소환한 보스의 패턴 게이지를 표시할 UI(보스 체력바 아래)입니다. 보스에 패턴 게이지가 없으면 숨깁니다. 비워 두면 연결하지 않습니다.")]
+    [SerializeField] private PatternGaugeBar _bossPatternGaugeBar;
 
     // 전투 준비가 끝났는지 여부. 끝나면 BattleReadyEvent도 발행된다. (이벤트를 놓친 늦은 구독자가 확인하는 용도)
     public bool IsReady { get; private set; }
@@ -75,6 +78,12 @@ public class BattleSceneInitialManager : MonoBehaviour
         if (isBossReady && _bossHPBar != null)
         {
             _bossHPBar.Bind(boss.Vital);
+        }
+
+        // 게이지가 없는 보스이거나 Init에 실패했다면 게이지 UI를 숨긴다.
+        if (_bossPatternGaugeBar != null)
+        {
+            _bossPatternGaugeBar.Bind(isBossReady ? boss.PatternGauge : null);
         }
 
         // 둘 다 준비되어야 전투 준비 완료다. 실패했다면 신호를 보내지 않는다. (원인은 위에서 에러로 알린다)
