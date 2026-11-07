@@ -135,7 +135,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   permanent: 0
-  lifetime: 2
+  lifetime: 0.8
   unscaledTime: 0
   enable3DGame: 0
   faceCameraView: 1
@@ -687,7 +687,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4282137855
-  m_fontColor: {r: 1, g: 0.23529412, b: 0.23529412, a: 1}
+  m_fontColor: {r: 0.42, g: 0.1, b: 0.6, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:

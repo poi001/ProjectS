@@ -49,25 +49,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   permanent: 0
-  lifetime: 2
+  lifetime: 0.8
   unscaledTime: 0
   enable3DGame: 0
   faceCameraView: 1
   lookAtCamera: 0
-  renderThroughWalls: 1
-  consistentScreenSize: 1
+  renderThroughWalls: 0
+  consistentScreenSize: 0
   distanceScalingSettings:
     baseDistance: 15
     closeDistance: 5
     farDistance: 50
     closeScale: 2
-    farScale: 1
+    farScale: 0.5
   scaleWithFov: 0
   defaultFov: 60
   fovCamera: {fileID: 0}
   cameraOverride: {fileID: 0}
-  enableNumber: 0
-  number: 123
+  enableNumber: 1
+  number: 1
   numberSettings:
     bold: 0
     italic: 0
@@ -100,14 +100,14 @@ MonoBehaviour:
     suffixDecimals: 1
     suffixDecimalChar: .
     suffixHideZeros: 0
-  enableLeftText: 1
-  leftText: Miss
+  enableLeftText: 0
+  leftText: 
   leftTextSettings:
     bold: 0
     italic: 0
     underline: 0
     strike: 0
-    alpha: 0.8
+    alpha: 1
     customColor: 0
     color: {r: 1, g: 1, b: 0, a: 1}
     mark: 0
@@ -117,7 +117,7 @@ MonoBehaviour:
     characterSpacing: 0
     size: 0
   enableRightText: 0
-  rightText: ' XP'
+  rightText: 
   rightTextSettings:
     bold: 0
     italic: 0
@@ -131,7 +131,7 @@ MonoBehaviour:
     horizontal: 0
     vertical: 0
     characterSpacing: 0
-    size: -1.5
+    size: 0
   enableTopText: 0
   topText: 
   topTextSettings:
@@ -208,25 +208,25 @@ MonoBehaviour:
   enableShakeFadeIn: 0
   shakeOffsetFadeIn: {x: 0, y: 1.5}
   shakeFrequencyFadeIn: 4
-  durationFadeOut: 0.25
-  enableOffsetFadeOut: 0
+  durationFadeOut: 0.2
+  enableOffsetFadeOut: 1
   offsetFadeOut: {x: 0.5, y: 0}
-  enableScaleFadeOut: 1
-  scaleFadeOut: {x: 1.5, y: 1.5}
+  enableScaleFadeOut: 0
+  scaleFadeOut: {x: 2, y: 2}
   enableCrossScaleFadeOut: 0
   crossScaleFadeOut: {x: 1, y: 1.5}
-  enableShakeFadeOut: 1
-  shakeOffsetFadeOut: {x: 0, y: -1.5}
-  shakeFrequencyFadeOut: 2
-  enableLerp: 0
+  enableShakeFadeOut: 0
+  shakeOffsetFadeOut: {x: 0, y: 1.5}
+  shakeFrequencyFadeOut: 4
+  enableLerp: 1
   lerpSettings:
     speed: 5
-    minX: -0.1
-    maxX: 0.1
-    minY: 0.6
-    maxY: 0.8
+    minX: -0.4
+    maxX: 0.4
+    minY: 0.5
+    maxY: 1
     randomFlip: 0
-  enableVelocity: 1
+  enableVelocity: 0
   velocitySettings:
     minX: -1
     maxX: 1
@@ -249,9 +249,9 @@ MonoBehaviour:
   minRotation: -4
   maxRotation: 4
   rotationRandomFlip: 0
-  enableRotateOverTime: 1
-  minRotationSpeed: -10
-  maxRotationSpeed: 10
+  enableRotateOverTime: 0
+  minRotationSpeed: -15
+  maxRotationSpeed: 15
   rotationSpeedRandomFlip: 0
   rotateOverTime:
     serializedVersion: 2
@@ -266,8 +266,17 @@ MonoBehaviour:
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
-      time: 0.2
+      time: 0.4
       value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.8
+      value: 0
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -291,8 +300,8 @@ MonoBehaviour:
     fromNumber: 0
     toNumber: 1000
     fromScale: 1
-    toScale: 1.25
-  enableScaleOverTime: 1
+    toScale: 2
+  enableScaleOverTime: 0
   scaleOverTime:
     serializedVersion: 2
     m_Curve:
@@ -307,7 +316,7 @@ MonoBehaviour:
       outWeight: 0
     - serializedVersion: 3
       time: 1
-      value: 0.8
+      value: 0.7
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -341,8 +350,17 @@ MonoBehaviour:
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
+        time: 0.7
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
         time: 1
-        value: 0.5
+        value: 0
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -357,6 +375,15 @@ MonoBehaviour:
       m_Curve:
       - serializedVersion: 3
         time: 0
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.5
         value: 1
         inSlope: 0
         outSlope: 0
@@ -443,12 +470,12 @@ MonoBehaviour:
   enablePush: 0
   pushSettings:
     radius: 4
-    pushOffset: 0.5
+    pushOffset: 0.8
   updateDelay: 0.0125
-  enablePooling: 1
+  enablePooling: 0
   poolSize: 50
   disableOnSceneLoad: 1
-  editorLastFont: 
+  editorLastFont: Pixel-Shadow3D
   position: {x: 0, y: 0, z: 0}
 --- !u!210 &8908118690113404014
 SortingGroup:
@@ -746,7 +773,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4287168419
-  m_fontColor: {r: 0.6393657, g: 1, b: 0.5330188, a: 1}
+  m_fontColor: {r: 1, g: 0.15, b: 0.15, a: 1}
   m_enableVertexGradient: 1
   m_colorMode: 2
   m_fontColorGradient:
