@@ -2,26 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // 오브젝트 풀 매니저. 타격 이펙트, 스킬 FX처럼 자주 생성/삭제되는 오브젝트를 재사용한다.
-// 게임 시작 시 자동으로 생성되고 씬이 바뀌어도 유지된다. 프리팹별로 풀이 따로 만들어지며, 처음 꺼낼 때 자동 생성된다.
+// 전투 씬의 BattleManagers에 포함되어 있다. 씬이 바뀌면 풀의 오브젝트도 함께 파괴된다.
+// 프리팹별로 풀이 따로 만들어지며, 처음 꺼낼 때 자동 생성된다.
 // 사용: PoolManager.Instance.Spawn(prefab, position, rotation)
 // 반환: PooledObject의 자동 반환 설정을 쓰거나, 수동 반환이면 PoolManager.Instance.Despawn(gameObject)를 호출한다.
 // 데미지 숫자는 DamageNumbersPro가 자체 풀링을 하므로 이 풀을 쓰지 않는다.
-public class PoolManager : PersistentSingleton<PoolManager>
+public class PoolManager : SceneSingleton<PoolManager>
 {
     // 프리팹 → 반환되어 대기 중인 인스턴스 목록
     private readonly Dictionary<GameObject, Stack<PooledObject>> _pools = new Dictionary<GameObject, Stack<PooledObject>>();
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-    private static void CreateInstance()
-    {
-        if (HasInstance)
-        {
-            return;
-        }
-
-        GameObject managerObject = new GameObject(nameof(PoolManager));
-        managerObject.AddComponent<PoolManager>();
-    }
 
     // 미리 인스턴스를 만들어 둔다. 한 번에 많이 나오는 FX의 첫 사용 시 끊김을 막고 싶을 때만 호출한다.
     // count는 대기 중인 인스턴스가 최소 몇 개가 되도록 할지를 뜻한다.
