@@ -7,10 +7,15 @@ using UnityEngine;
 public abstract class Enemy : Character
 {
     [Header("스탯")]
+    [Tooltip("이 적의 능력치 데이터(ScriptableObject)입니다. 체력, 공격력 등이 들어 있습니다.")]
     [SerializeField] private EnemyStatsSO _stats;
 
+    [Header("종류")]
+    [Tooltip("보스인지 여부입니다. 켜면 죽을 때 KO 연출(슬로우 모션, 줌)과 보스 KO 사운드가 나옵니다. 보스가 소환하는 잡몹은 끕니다.")]
+    [SerializeField] private bool _isBoss;
+
     [Header("시작")]
-    // 전투 시작 후 첫 패턴을 시전하기 전까지 Idle로 기다리는 시간
+    [Tooltip("전투 시작 후 첫 패턴을 시전하기 전까지 Idle로 기다리는 시간입니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _startIdleDuration = 1f;
 
     protected StateMachine<Enemy> stateMachine;
@@ -20,6 +25,7 @@ public abstract class Enemy : Character
     public CharacterVital Vital { get; private set; }
     public new EnemyAnimation Animation => _enemyAnimation;
     public EnemyStatsSO Stats => _stats;
+    public bool IsBoss => _isBoss;
     public Player Target { get; private set; }
 
     public EnemyIdleState IdleState { get; private set; }
@@ -34,73 +40,95 @@ public abstract class Enemy : Character
     public float DistanceToTarget => Mathf.Abs(Target.transform.position.x - transform.position.x);
 
     protected override string HurtboxLayerName => "Enemy";
+    protected override string TargetLayerName => "Player";
 
-    // 초기화 순서: 컴포넌트 참조 → 스탯 적용 → 상태 생성. 타깃 탐색과 상태기계 시작은 Start에서 한다.
-    protected override void Awake()
+    // 초기화 순서: 컴포넌트 참조 → 스탯 적용 → 상태 생성 → 타깃 지정. 이벤트 구독과 상태기계 시작은 OnInitCompleted에서 한다.
+    // 타깃은 전투 정보(BattleContext)의 플레이어다. 플레이어가 먼저 Init되어 있어야 한다.
+    protected override bool OnInit(BattleContext context)
     {
-        base.Awake();
+        if (!base.OnInit(context))
+        {
+            return false;
+        }
 
         if (_stats == null)
         {
             Debug.LogError("Enemy에 EnemyStatsSO가 지정되지 않았습니다.", this);
-            enabled = false;
-            return;
+            return false;
         }
 
         Vital = GetComponent<CharacterVital>();
         _enemyAnimation = GetComponentInChildren<EnemyAnimation>();
 
+        if (_enemyAnimation == null)
+        {
+            Debug.LogError($"{name}: Visuals에 EnemyAnimation이 없습니다.", this);
+            return false;
+        }
+
         ApplyStats();
         CreateStates();
-    }
+        Animation.SetAttackSpeed(_stats.AttackSpeed);
 
-    private void OnEnable()
-    {
-        Vital.Damaged += OnDamaged;
-        Vital.Died += OnDied;
-    }
+        Player player = context != null ? context.Player : null;
 
-    private void OnDisable()
-    {
-        Vital.Damaged -= OnDamaged;
-        Vital.Died -= OnDied;
-    }
-
-    // 플레이어는 Awake에서 Vital을 준비하므로, 모든 Awake가 끝난 Start에서 타깃을 찾는다.
-    // Animator는 자식(Visuals) 오브젝트에 있어 Awake 시점에는 아직 활성화되지 않았을 수 있으므로 Start에서 초기화한다.
-    private void Start()
-    {
-        Target = FindAnyObjectByType<Player>();
-
-        if (Target == null)
+        if (player == null || !player.IsInitialized)
         {
-            Debug.LogWarning($"{name}: 씬에 Player가 없어 패턴을 시전하지 않습니다.", this);
+            Debug.LogWarning($"{name}: Init된 Player가 없어 패턴을 시전하지 않습니다.", this);
         }
         else
+        {
+            Target = player;
+        }
+
+        return true;
+    }
+
+    protected override void OnInitCompleted()
+    {
+        base.OnInitCompleted();
+        Vital.Died += OnDied;
+
+        if (Target != null)
         {
             Target.Vital.Died += OnTargetDied;
         }
 
-        Animation.SetAttackSpeed(_stats.AttackSpeed);
         IdleState.SetDuration(_startIdleDuration);
         stateMachine.Initialize(IdleState);
     }
 
-    private void OnDestroy()
+    protected override void OnRelease()
     {
+        Vital.Died -= OnDied;
+
+        // 타깃이 먼저 파괴된 경우(씬 전환 등)에는 해제할 대상이 없다.
         if (Target != null)
         {
             Target.Vital.Died -= OnTargetDied;
         }
+
+        Target = null;
+        base.OnRelease();
     }
 
     private void Update()
     {
+        if (!IsInitialized)
+        {
+            return;
+        }
+
         stateMachine.LogicUpdate();
     }
 
     private void FixedUpdate()
     {
+        if (!IsInitialized)
+        {
+            return;
+        }
+
         stateMachine.PhysicsUpdate();
     }
 
@@ -130,13 +158,6 @@ public abstract class Enemy : Character
         stateMachine = new StateMachine<Enemy>();
         IdleState = new EnemyIdleState(this, stateMachine);
         DeadState = new EnemyDeadState(this, stateMachine);
-    }
-
-    // 임시 디버그용: 피해 판정 확인을 위한 로그. 확인이 끝나면 제거한다.
-    private void OnDamaged(DamageInfo damageInfo)
-    {
-        string instigatorName = damageInfo.Instigator != null ? damageInfo.Instigator.name : "없음";
-        Debug.Log($"{name} 피격: -{damageInfo.Amount} (체력 {Vital.CurrentHealth}/{Vital.MaxHealth}, 공격자 {instigatorName})", this);
     }
 
     private void OnDied()

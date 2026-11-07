@@ -1,4 +1,5 @@
-// 공격 2회. 두 번 휘두르는 콤보이며, 휘두를 때마다 플레이어 쪽으로 살짝씩 이동한다. (GDD 6.6)
+// 공격 2회. 두 번 휘두르는 콤보이며, 휘두를 때마다 살짝씩 전진한다. (GDD 6.6)
+// 방향은 시작할 때 플레이어 쪽으로 한 번만 정하고, 두 번 모두 휘두를 때까지 바꾸지 않는다.
 public class KnightComboState : KnightAttackBaseState
 {
     public KnightComboState(Knight owner, StateMachine<Enemy> stateMachine)
@@ -7,10 +8,5 @@ public class KnightComboState : KnightAttackBaseState
     }
 
     protected override int AnimationHash => KnightAnimation.AttackCombo;
-    protected override int StepCount => 2;
-
-    protected override float GetStepStartTime(int stepIndex)
-    {
-        return stepIndex == 0 ? 0f : knight.ComboSecondStepTime;
-    }
+    protected override KnightSwing[] Swings => knight.ComboSwings;
 }

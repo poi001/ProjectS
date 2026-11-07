@@ -7,10 +7,5 @@ public class KnightAttackState : KnightAttackBaseState
     }
 
     protected override int AnimationHash => KnightAnimation.Attack;
-    protected override int StepCount => 1;
-
-    protected override float GetStepStartTime(int stepIndex)
-    {
-        return 0f;
-    }
+    protected override KnightSwing[] Swings => knight.AttackSwings;
 }
