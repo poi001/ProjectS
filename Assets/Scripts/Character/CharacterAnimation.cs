@@ -17,6 +17,8 @@ public abstract class CharacterAnimation : MonoBehaviour
     // 좌우 반전을 맡는 부모(Visuals). 이 오브젝트(Sprite)는 Visuals의 자식이어야 한다.
     private Transform _flipRoot;
     private float _baseScaleX;
+    // 이 오브젝트(Sprite)의 원래 위치. 애니메이션별 위치 보정(SetSpriteOffsetX)의 기준이다.
+    private Vector3 _baseLocalPosition;
 
     // 공격 클립의 타격 프레임에 도달했을 때 발생한다. 공격 상태가 진입할 때 구독하고 나갈 때 해제한다.
     public event Action AttackHitFrame;
@@ -36,6 +38,17 @@ public abstract class CharacterAnimation : MonoBehaviour
         }
 
         _baseScaleX = Mathf.Abs(_flipRoot.localScale.x);
+        _baseLocalPosition = transform.localPosition;
+    }
+
+    // 스프라이트를 원래 위치에서 가로로 옮긴다. 바라보는 방향(앞)이 양수이고, 0이면 원래 위치로 돌아간다. (단위: 월드 거리)
+    // 그림이 칸 가운데에서 벗어나 있는 애니메이션(벽타기 등)을 몸통이나 벽에 맞출 때 쓴다.
+    // Visuals의 좌우 반전을 따라가므로 왼쪽을 볼 때도 같은 값을 넘기면 된다.
+    public void SetSpriteOffsetX(float forwardOffset)
+    {
+        Vector3 localPosition = _baseLocalPosition;
+        localPosition.x += forwardOffset / _baseScaleX;
+        transform.localPosition = localPosition;
     }
 
     // Animator에 해당 애니메이션 상태가 있는지 확인한다.
@@ -51,6 +64,7 @@ public abstract class CharacterAnimation : MonoBehaviour
     }
 
     // 해당 애니메이션이 재생 중이고 한 번 끝까지 재생되었는지 확인한다.
+    // 컨트롤러에서 Speed를 음수로 둔 역재생 상태도 진행도는 0에서 1로 늘어나므로(0이 클립의 마지막 프레임) 그대로 쓸 수 있다.
     public bool IsFinished(int stateHash)
     {
         AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);

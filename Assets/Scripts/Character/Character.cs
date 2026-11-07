@@ -61,6 +61,15 @@ public abstract class Character : MonoBehaviour, ICharacterLifecycle
         OnInitCompleted();
     }
 
+    // 피격 판정 콜라이더를 켜고 끈다. 꺼져 있는 동안에는 상대 공격의 판정 조회에 걸리지 않는다. (플레이어 대시 등)
+    public void SetHurtboxEnabled(bool isEnabled)
+    {
+        if (Hurtbox != null)
+        {
+            Hurtbox.enabled = isEnabled;
+        }
+    }
+
     // 사망 상태가 사망 애니메이션이 끝난 것을 확인했을 때 호출한다. CharacterDeathFinishedEvent를 한 번만 발행한다.
     public void NotifyDeathFinished()
     {

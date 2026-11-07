@@ -117,6 +117,12 @@ public class CharacterMovement : MonoBehaviour
         IsGrounded = false;
     }
 
+    // 기본 점프 높이의 heightRatio배 높이까지 오르는 점프의 세로 속도. (공중 점프, 벽 점프용. Jump(float)에 넘긴다)
+    public float GetJumpVelocity(float heightRatio)
+    {
+        return Mathf.Sqrt(2f * Gravity * _jumpHeight * Mathf.Max(0f, heightRatio));
+    }
+
     // 속도를 정해 공중으로 띄운다. (피격 넉백용) 점프처럼 코요테 타임을 소모하고, 직후 판정 박스가 바닥과 겹쳐 접지로 오판정되는 것을 막는다.
     public void Launch(Vector2 velocity)
     {
