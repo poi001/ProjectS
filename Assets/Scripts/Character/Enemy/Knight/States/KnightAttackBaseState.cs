@@ -76,11 +76,13 @@ public abstract class KnightAttackBaseState : KnightState
                 knight.HitChecker.ResetHitTargets();
             }
 
-            knight.HitChecker.Hit(swing.Hitbox, knight.Stats.AttackPower * swing.DamageMultiplier, _stepDirection);
+            int hitCount = knight.HitChecker.Hit(swing.Hitbox, knight.Stats.AttackPower * swing.DamageMultiplier, _stepDirection);
+            knight.ReducePatternGaugeByHits(hitCount);
         }
     }
 
-    // 다음 휘두름의 시작 시점에 도달하면 전진을 시작한다. 방향은 공격 시작 때 정한 것을 그대로 쓴다.
+    // 다음 휘두름의 시작 시점에 도달하면 전진을 시작하고 패턴 게이지를 채운다. 방향은 공격 시작 때 정한 것을 그대로 쓴다.
+    // 게이지는 휘두름마다 따로 차므로 공격 2회는 두 번 찬다.
     private void UpdateStep(KnightSwing[] swings, float normalizedTime)
     {
         int nextStepIndex = _stepIndex + 1;
@@ -91,5 +93,6 @@ public abstract class KnightAttackBaseState : KnightState
         }
 
         _stepIndex = nextStepIndex;
+        knight.PatternGauge.Add(knight.SwingGaugeGain);
     }
 }

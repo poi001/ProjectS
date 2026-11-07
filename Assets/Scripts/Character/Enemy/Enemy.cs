@@ -23,6 +23,10 @@ public abstract class Enemy : Character
     private EnemyAnimation _enemyAnimation;
 
     public CharacterVital Vital { get; private set; }
+    // 패턴 게이지. 게이지를 쓰는 보스만 프리팹 루트에 PatternGauge를 붙이며, 없으면 null이다. 사용 방법은 보스마다 다르다.
+    public PatternGauge PatternGauge { get; private set; }
+    // 머리 위 상태 VFX(기절, 감지, 버프 등) 표시. 프리팹 루트에 StatusVfxDisplay가 없으면 null이며, 그러면 상태 VFX를 띄우지 않는다.
+    public StatusVfxDisplay StatusVfx { get; private set; }
     public new EnemyAnimation Animation => _enemyAnimation;
     public EnemyStatsSO Stats => _stats;
     public bool IsBoss => _isBoss;
@@ -59,6 +63,10 @@ public abstract class Enemy : Character
 
         Vital = GetComponent<CharacterVital>();
         _enemyAnimation = GetComponentInChildren<EnemyAnimation>();
+
+        // 게이지가 없는 보스는 null로 둔다. (TryGetComponent는 없을 때 진짜 null을 준다.)
+        PatternGauge = TryGetComponent(out PatternGauge patternGauge) ? patternGauge : null;
+        StatusVfx = TryGetComponent(out StatusVfxDisplay statusVfx) ? statusVfx : null;
 
         if (_enemyAnimation == null)
         {
@@ -109,6 +117,12 @@ public abstract class Enemy : Character
         }
 
         Target = null;
+
+        if (StatusVfx != null)
+        {
+            StatusVfx.HideAll();
+        }
+
         base.OnRelease();
     }
 
@@ -144,12 +158,43 @@ public abstract class Enemy : Character
         stateMachine.ChangeState(IdleState);
     }
 
+    // 머리 위에 지속형 상태 VFX(기절, 버프 등)를 켠다. StatusVfxDisplay가 없거나 프리팹이 비어 있으면 아무것도 하지 않는다.
+    public void ShowStatusVfx(GameObject prefab)
+    {
+        if (StatusVfx != null)
+        {
+            StatusVfx.Show(prefab);
+        }
+    }
+
+    public void HideStatusVfx(GameObject prefab)
+    {
+        if (StatusVfx != null)
+        {
+            StatusVfx.Hide(prefab);
+        }
+    }
+
+    // 머리 위에 일회성 상태 VFX(감지 등)를 한 번 띄운다.
+    public void PlayStatusVfx(GameObject prefab)
+    {
+        if (StatusVfx != null)
+        {
+            StatusVfx.Play(prefab);
+        }
+    }
+
     // Idle이 끝났을 때 호출된다. 보스마다 다음 패턴을 고르는 규칙이 다르므로 자식 클래스가 구현한다.
     public abstract void ChangeToNextPattern();
 
     private void ApplyStats()
     {
         Vital.Initialize(_stats.MaxHealth);
+
+        if (PatternGauge != null)
+        {
+            PatternGauge.Initialize();
+        }
     }
 
     // 공통 상태를 생성한다. 자식 클래스에서 오버라이드할 때는 반드시 base.CreateStates()를 먼저 호출한다.

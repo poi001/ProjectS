@@ -13,6 +13,7 @@ public class KnightRollState : KnightState
 
     public override void Enter()
     {
+        knight.PatternGauge.Add(knight.RollGaugeGain);
         _direction = knight.DirectionToTarget;
         knight.FaceTarget();
         knight.Animation.Play(KnightAnimation.Roll);
