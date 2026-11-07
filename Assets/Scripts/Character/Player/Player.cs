@@ -5,20 +5,33 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerInputHandler), typeof(CharacterVital))]
 public class Player : Character
 {
+    // 공격자와 x 차이가 이보다 작으면 좌우를 구분할 수 없는 것으로 본다.
+    private const float KnockbackDirectionThreshold = 0.01f;
+
     [Header("스탯")]
+    [Tooltip("플레이어의 능력치 데이터(ScriptableObject)입니다. 이동 속도, 체력, 공격력 등이 들어 있습니다.")]
     [SerializeField] private PlayerStatsSO _stats;
 
     [Header("점프")]
+    [Tooltip("발판에서 떨어진 뒤에도 이 시간 안에는 점프할 수 있습니다. (코요테 타임, 단위: 초)")]
     [SerializeField] private float _coyoteTime = 0.1f;
 
     [Header("공격")]
-    // 캐릭터가 가진 지상 콤보 수. Animator에 Combo{n}, Combo{n}_End 상태가 이 수만큼 있어야 한다.
-    [SerializeField] private int _comboCount = 3;
-    // 콤보별 데미지 계수. 데미지 = 공격력 × 계수. 점프 공격은 콤보 1의 계수를 쓴다.
-    [SerializeField] private float[] _comboDamageMultipliers = { 1f, 1f, 1f };
-    // 콤보별 공격 판정. 범위가 같다면 같은 판정을 여러 칸에 넣어도 된다.
-    [SerializeField] private AttackHitbox[] _comboHitboxes = new AttackHitbox[0];
-    [SerializeField] private AttackHitbox _jumpAttackHitbox;
+    [Tooltip("지상 콤보의 단계별 공격 설정입니다. 배열 크기가 곧 콤보 수이며, Animator에 Combo{n}, Combo{n}_End 상태가 이 수만큼 있어야 합니다.\n단계마다 피해 배율과 판정 범위를 정합니다.")]
+    [SerializeField] private PlayerAttack[] _comboAttacks =
+    {
+        new PlayerAttack(1f, new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f))),
+        new PlayerAttack(1f, new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f))),
+        new PlayerAttack(1f, new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f)))
+    };
+    [Tooltip("점프 공격의 판정 범위입니다. 피해량은 지상 콤보 1단계의 배율을 그대로 씁니다.")]
+    [SerializeField] private HitboxShape _jumpAttackHitbox = new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f));
+
+    [Header("피격")]
+    [Tooltip("피해를 입은 순간부터 무적인 시간입니다. 넉백 시간도 포함됩니다. (단위: 초)")]
+    [SerializeField] private float _invincibleDuration = 1f;
+    [Tooltip("피격 시 넉백 속도입니다. x는 피해를 입은 방향의 반대로 밀리는 속도, y는 위로 뜨는 속도입니다. (단위: 월드 거리/초)")]
+    [SerializeField] private Vector2 _knockbackVelocity = new Vector2(5f, 5f);
 
     private StateMachine<Player> _stateMachine;
     // 부모의 Animation 자동 프로퍼티와 직렬화 필드 이름이 겹치지 않도록 별도 필드에 보관한다.
@@ -28,7 +41,10 @@ public class Player : Character
     public CharacterVital Vital { get; private set; }
     public new PlayerAnimation Animation => _playerAnimation;
     public PlayerStatsSO Stats => _stats;
-    public AttackHitbox JumpAttackHitbox => _jumpAttackHitbox;
+    public HitboxShape JumpAttackHitbox => _jumpAttackHitbox;
+    // 점프 공격의 데미지 (공격력 × 지상 콤보 1단계의 배율)
+    public float JumpAttackDamage => _comboAttacks.Length > 0 ? GetDamage(_comboAttacks[0]) : _stats.AttackPower;
+    public Vector2 KnockbackVelocity => _knockbackVelocity;
 
     public PlayerIdleState IdleState { get; private set; }
     public PlayerRunState RunState { get; private set; }
@@ -36,6 +52,7 @@ public class Player : Character
     public PlayerFallState FallState { get; private set; }
     public PlayerAttackState AttackState { get; private set; }
     public PlayerJumpAttackState JumpAttackState { get; private set; }
+    public PlayerHitState HitState { get; private set; }
     public PlayerDeadState DeadState { get; private set; }
 
     // Animator에서 실제로 사용할 수 있는 지상 콤보 수
@@ -44,80 +61,109 @@ public class Player : Character
     public State<Player> CurrentState => _stateMachine.CurrentState;
 
     protected override string HurtboxLayerName => "Player";
+    protected override string TargetLayerName => "Enemy";
 
     // 점프 버퍼 시간 안에 입력이 있었고, 코요테 타임 안에 접지했었다면 점프 가능
     public bool CanJump => InputHandler.HasBufferedJump && Movement.TimeSinceGrounded <= _coyoteTime;
 
-    // 초기화 순서: 컴포넌트 참조 → 스탯 적용 → 상태 생성. Animator 관련 초기화는 Start에서 한다.
-    protected override void Awake()
+    // 초기화 순서: 컴포넌트 참조 → 스탯 적용 → 상태 생성 → Animator 설정. 이벤트 구독과 상태기계 시작은 OnInitCompleted에서 한다.
+    protected override bool OnInit(BattleContext context)
     {
-        base.Awake();
+        if (!base.OnInit(context))
+        {
+            return false;
+        }
 
         if (_stats == null)
         {
             Debug.LogError("Player에 PlayerStatsSO가 지정되지 않았습니다.", this);
-            enabled = false;
-            return;
+            return false;
         }
 
         InputHandler = GetComponent<PlayerInputHandler>();
         Vital = GetComponent<CharacterVital>();
         _playerAnimation = GetComponentInChildren<PlayerAnimation>();
 
+        if (_playerAnimation == null)
+        {
+            Debug.LogError("Player의 Visuals에 PlayerAnimation이 없습니다.", this);
+            return false;
+        }
+
         ApplyStats();
         CreateStates();
-    }
 
-    private void OnEnable()
-    {
-        Vital.Died += OnDied;
-    }
-
-    private void OnDisable()
-    {
-        Vital.Died -= OnDied;
-    }
-
-    // Animator는 자식(Visuals) 오브젝트에 있어 Awake 시점에는 아직 활성화되지 않았을 수 있으므로 Start에서 초기화한다.
-    private void Start()
-    {
-        ComboCount = Animation.SetupCombos(Mathf.Max(1, _comboCount));
+        ComboCount = Animation.SetupCombos(Mathf.Max(1, _comboAttacks.Length));
         Animation.SetAttackSpeed(_stats.AttackSpeed);
         ValidateAttackSettings();
+        ValidateHitSettings();
+        return true;
+    }
+
+    protected override void OnInitCompleted()
+    {
+        base.OnInitCompleted();
+        Vital.Damaged += OnDamaged;
+        Vital.Died += OnDied;
         _stateMachine.Initialize(IdleState);
+    }
+
+    protected override void OnRelease()
+    {
+        Vital.Damaged -= OnDamaged;
+        Vital.Died -= OnDied;
+        base.OnRelease();
     }
 
     private void Update()
     {
+        if (!IsInitialized)
+        {
+            return;
+        }
+
         _stateMachine.LogicUpdate();
     }
 
     private void FixedUpdate()
     {
+        if (!IsInitialized)
+        {
+            return;
+        }
+
         _stateMachine.PhysicsUpdate();
     }
 
-    // 해당 콤보의 데미지 (공격력 × 콤보 계수). 계수가 부족하면 마지막 계수를 쓴다.
-    public float GetComboDamage(int comboIndex)
+    // 해당 콤보 단계의 공격 설정. 설정되지 않았다면 null을 반환한다.
+    public PlayerAttack GetComboAttack(int comboIndex)
     {
-        if (_comboDamageMultipliers.Length == 0)
-        {
-            return _stats.AttackPower;
-        }
-
-        int multiplierIndex = Mathf.Min(comboIndex, _comboDamageMultipliers.Length - 1);
-        return _stats.AttackPower * _comboDamageMultipliers[multiplierIndex];
-    }
-
-    // 해당 콤보의 공격 판정. 설정되지 않았다면 null을 반환한다.
-    public AttackHitbox GetComboHitbox(int comboIndex)
-    {
-        if (comboIndex >= _comboHitboxes.Length)
+        if (comboIndex >= _comboAttacks.Length)
         {
             return null;
         }
 
-        return _comboHitboxes[comboIndex];
+        return _comboAttacks[comboIndex];
+    }
+
+    // 공격의 데미지 (공격력 × 공격 배율)
+    public float GetDamage(PlayerAttack attack)
+    {
+        return _stats.AttackPower * attack.DamageMultiplier;
+    }
+
+    // 선택했을 때 지상 콤보 단계별 범위와 점프 공격 범위를 그린다.
+    protected override void DrawHitboxGizmos(float facingDirection)
+    {
+        if (_comboAttacks != null)
+        {
+            for (int i = 0; i < _comboAttacks.Length; i++)
+            {
+                DrawHitboxGizmo(_comboAttacks[i].Hitbox, facingDirection, $"콤보 {i + 1}");
+            }
+        }
+
+        DrawHitboxGizmo(_jumpAttackHitbox, facingDirection, "점프 공격");
     }
 
     private void ApplyStats()
@@ -126,25 +172,21 @@ public class Player : Character
         Vital.Initialize(_stats.MaxHealth);
     }
 
-    // 콤보 수에 비해 계수나 판정 설정이 부족하면 알린다.
+    // 콤보 공격 설정이 비어 있으면 지상 공격이 판정을 내지 못하므로 알린다.
     private void ValidateAttackSettings()
     {
-        if (_comboDamageMultipliers.Length < ComboCount)
+        if (_comboAttacks.Length == 0)
         {
-            Debug.LogWarning($"콤보 데미지 계수가 콤보 수({ComboCount})보다 적어, 부족한 콤보는 마지막 계수를 사용합니다.", this);
+            Debug.LogError("지상 콤보 공격 설정이 비어 있습니다. 공격해도 판정이 나가지 않습니다.", this);
         }
+    }
 
-        for (int i = 0; i < ComboCount; i++)
+    // Hit 애니메이션 상태가 없으면 피격 상태가 끝나지 않으므로 미리 알린다.
+    private void ValidateHitSettings()
+    {
+        if (!Animation.HasState(PlayerAnimation.Hit))
         {
-            if (GetComboHitbox(i) == null)
-            {
-                Debug.LogError($"콤보 {i + 1}의 공격 판정(AttackHitbox)이 지정되지 않았습니다.", this);
-            }
-        }
-
-        if (_jumpAttackHitbox == null)
-        {
-            Debug.LogError("점프 공격의 공격 판정(AttackHitbox)이 지정되지 않았습니다.", this);
+            Debug.LogError("Animator에 'Hit' 상태가 없어 피격 상태가 끝나지 않습니다.", this);
         }
     }
 
@@ -157,7 +199,37 @@ public class Player : Character
         FallState = new PlayerFallState(this, _stateMachine);
         AttackState = new PlayerAttackState(this, _stateMachine);
         JumpAttackState = new PlayerJumpAttackState(this, _stateMachine);
+        HitState = new PlayerHitState(this, _stateMachine);
         DeadState = new PlayerDeadState(this, _stateMachine);
+    }
+
+    // 피해를 입으면 무적을 시작하고 진행 중이던 동작을 끊고 피격 상태로 전환한다.
+    private void OnDamaged(DamageInfo damageInfo)
+    {
+        // 치명 피해는 Died에서 사망 상태로 전환하므로 피격 상태를 거치지 않는다.
+        if (Vital.IsDead)
+        {
+            return;
+        }
+
+        Vital.SetInvincible(_invincibleDuration);
+        HitState.SetKnockbackDirection(GetKnockbackDirection(damageInfo));
+        _stateMachine.ChangeState(HitState);
+    }
+
+    // 피해를 준 쪽의 반대 방향 (오른쪽 1, 왼쪽 -1). 공격자 위치를 기준으로 하고, 공격자 정보가 없으면 피격 지점을 기준으로 한다.
+    // 기준 위치와 x가 같아 방향을 알 수 없으면 바라보는 방향의 반대로 한다.
+    private float GetKnockbackDirection(DamageInfo damageInfo)
+    {
+        float sourceX = damageInfo.Instigator != null ? damageInfo.Instigator.transform.position.x : damageInfo.HitPoint.x;
+        float deltaX = transform.position.x - sourceX;
+
+        if (Mathf.Abs(deltaX) > KnockbackDirectionThreshold)
+        {
+            return Mathf.Sign(deltaX);
+        }
+
+        return -Animation.FacingDirection;
     }
 
     private void OnDied()

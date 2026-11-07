@@ -80,14 +80,7 @@ public class PlayerJumpAttackState : PlayerState
 
     private void OnAttackHitFrame()
     {
-        AttackHitbox hitbox = owner.JumpAttackHitbox;
-
-        if (hitbox == null)
-        {
-            return;
-        }
-
-        hitbox.ResetHitTargets();
-        hitbox.Hit(owner.GetComboDamage(0), owner.Animation.FacingDirection);
+        owner.HitChecker.ResetHitTargets();
+        owner.HitChecker.Hit(owner.JumpAttackHitbox, owner.JumpAttackDamage, owner.Animation.FacingDirection);
     }
 }

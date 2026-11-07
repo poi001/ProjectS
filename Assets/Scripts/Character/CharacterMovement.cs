@@ -12,8 +12,13 @@ public class CharacterMovement : MonoBehaviour
     private const string GroundLayerName = "Ground";
     // 벽/지형에 닿았는지 확인할 때 콜라이더 가장자리에서 더 검사하는 거리
     private const float WallCheckSkin = 0.05f;
+    // IsBlocked는 박스캐스트라 콜라이더 자체의 여유 때문에 WallCheckSkin보다 약간 먼 거리에서도 true가 된다.
+    // 막혀서 멈춘 자리에서 벽 접촉이 false로 나오지 않도록 레이캐스트에 더하는 여유 거리
+    private const float WallTouchMargin = 0.02f;
     // 옆이 막혔는지 확인할 때 판정 박스 높이 비율. 발밑 바닥과 머리 위 천장에 닿은 것은 막힌 것으로 보지 않도록 줄인다.
     private const float BlockCheckHeightRatio = 0.8f;
+    // 목표 지점을 향한 점프의 최소 상승 높이. 목표가 현재 높이와 같거나 낮아도 이만큼은 뛰어오른다. (단위: 월드 거리)
+    private const float MinTargetJumpHeight = 0.5f;
     // 가장 가까운 벽을 찾을 때 좌우로 검사하는 최대 거리
     private const float WallSearchDistance = 100f;
 
@@ -38,6 +43,10 @@ public class CharacterMovement : MonoBehaviour
 
     public bool IsGrounded { get; private set; }
     public Vector2 Velocity => _rigidbody.linearVelocity;
+
+    // 물리 기준 위치. Rigidbody2D가 Interpolate면 transform.position은 물리 위치보다 한 스텝 뒤처지므로,
+    // 물리 판정(Bounds, 속도 계산)과 함께 쓰는 위치는 이 값을 쓴다.
+    public Vector2 Position => _rigidbody.position;
 
     // 마지막으로 접지해 있던 시점부터 지난 시간. 점프로 땅을 떠나면 무한대가 된다. (코요테 타임 판정용)
     public float TimeSinceGrounded => Time.time - _lastGroundedTime;
@@ -92,8 +101,14 @@ public class CharacterMovement : MonoBehaviour
 
     public void Jump()
     {
+        Jump(CalculateJumpVelocity());
+    }
+
+    // 세로 속도를 직접 정해 점프한다. (목표 지점을 향한 점프용, CalculateJumpVelocityTo로 구한 값을 넘긴다)
+    public void Jump(float velocityY)
+    {
         Vector2 velocity = _rigidbody.linearVelocity;
-        velocity.y = CalculateJumpVelocity();
+        velocity.y = velocityY;
         _rigidbody.linearVelocity = velocity;
 
         // 코요테 타임을 소모해 한 번의 접지로 중복 점프하지 않도록 한다.
@@ -102,12 +117,24 @@ public class CharacterMovement : MonoBehaviour
         IsGrounded = false;
     }
 
+    // 속도를 정해 공중으로 띄운다. (피격 넉백용) 점프처럼 코요테 타임을 소모하고, 직후 판정 박스가 바닥과 겹쳐 접지로 오판정되는 것을 막는다.
+    public void Launch(Vector2 velocity)
+    {
+        _rigidbody.linearVelocity = velocity;
+
+        _lastGroundedTime = float.NegativeInfinity;
+        _groundIgnoreEndTime = Time.time + _groundIgnoreTimeAfterJump;
+        IsGrounded = false;
+    }
+
     // 해당 방향(오른쪽 양수, 왼쪽 음수)으로 벽에 붙어 있는지 확인한다.
+    // IsBlocked로 막혀 멈춘 자리에서도 true가 되도록 여유 거리(WallTouchMargin)를 더해 검사한다.
     public bool IsTouchingWall(float direction)
     {
         Bounds bounds = _bodyCollider.bounds;
         Vector2 rayDirection = new Vector2(Mathf.Sign(direction), 0f);
-        RaycastHit2D hit = Physics2D.Raycast(bounds.center, rayDirection, bounds.extents.x + WallCheckSkin, _wallLayerMask);
+        float rayDistance = bounds.extents.x + WallCheckSkin + WallTouchMargin;
+        RaycastHit2D hit = Physics2D.Raycast(bounds.center, rayDirection, rayDistance, _wallLayerMask);
         return hit.collider != null;
     }
 
@@ -119,6 +146,14 @@ public class CharacterMovement : MonoBehaviour
         Vector2 castDirection = new Vector2(Mathf.Sign(direction), 0f);
         RaycastHit2D hit = Physics2D.BoxCast(bounds.center, checkSize, 0f, castDirection, WallCheckSkin, _obstacleLayerMask);
         return hit.collider != null;
+    }
+
+    // origin에서 해당 방향(오른쪽 양수, 왼쪽 음수)으로 maxDistance 안에 벽이 있으면 벽까지의 거리를, 없으면 maxDistance를 반환한다.
+    public float GetFreeDistanceToWall(Vector2 origin, float direction, float maxDistance)
+    {
+        Vector2 rayDirection = new Vector2(Mathf.Sign(direction), 0f);
+        RaycastHit2D hit = Physics2D.Raycast(origin, rayDirection, maxDistance, _wallLayerMask);
+        return hit.collider != null ? hit.distance : maxDistance;
     }
 
     // 좌우 중 가장 가까운 벽을 찾는다. distance는 콜라이더 가장자리에서 벽까지의 거리다.
@@ -152,6 +187,31 @@ public class CharacterMovement : MonoBehaviour
         {
             _lastGroundedTime = Time.time;
         }
+    }
+
+    // 현재 위치에서 가로로 horizontalDistance(0 이상), 세로로 heightGain만큼 떨어진 지점을 정확히 지나가는 점프 속도를 구한다.
+    // 반환값의 x는 가로 속도의 크기(방향은 호출한 쪽이 정한다), y는 Jump(float)에 넘길 세로 속도다.
+    // 기본은 최고점에서 그 지점에 닿는 시간(sqrt(2h/g))으로 날아가고, 그러면 가로 속도가 maxSpeedX를 넘을 때는
+    // 비행 시간을 늘려 최대 속도로 날아간다. (내려오면서 그 지점을 지난다)
+    // 비행 시간은 물리 스텝(Time.fixedDeltaTime)의 정수배로 맞춘다.
+    // 물리 엔진은 한 스텝마다 속도에 중력을 더한 뒤 위치를 옮기므로(반암시적 오일러),
+    // N스텝 뒤 높이가 heightGain이 되는 세로 속도는 v = h / T + g * (T + dt) / 2 다. (T = N * dt)
+    public Vector2 CalculateJumpVelocityTo(float horizontalDistance, float heightGain, float maxSpeedX)
+    {
+        float height = Mathf.Max(heightGain, MinTargetJumpHeight);
+        float flightTime = Mathf.Sqrt(2f * height / Gravity);
+
+        if (maxSpeedX > 0f)
+        {
+            flightTime = Mathf.Max(flightTime, horizontalDistance / maxSpeedX);
+        }
+
+        float stepTime = Time.fixedDeltaTime;
+        flightTime = Mathf.Ceil(flightTime / stepTime) * stepTime;
+
+        float velocityX = horizontalDistance / flightTime;
+        float velocityY = height / flightTime + Gravity * (flightTime + stepTime) * 0.5f;
+        return new Vector2(velocityX, velocityY);
     }
 
     // 목표 점프 높이에 도달하기 위한 초기 속도: v = sqrt(2 * g * h)

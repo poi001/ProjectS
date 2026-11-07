@@ -98,14 +98,14 @@ public class PlayerAttackState : PlayerState
     // 타격 이벤트마다 새 공격으로 보고 판정한다. (한 클립에 이벤트가 여러 개면 여러 번 때린다.)
     private void OnAttackHitFrame()
     {
-        AttackHitbox hitbox = owner.GetComboHitbox(_comboIndex);
+        PlayerAttack attack = owner.GetComboAttack(_comboIndex);
 
-        if (hitbox == null)
+        if (attack == null)
         {
             return;
         }
 
-        hitbox.ResetHitTargets();
-        hitbox.Hit(owner.GetComboDamage(_comboIndex), owner.Animation.FacingDirection);
+        owner.HitChecker.ResetHitTargets();
+        owner.HitChecker.Hit(attack.Hitbox, owner.GetDamage(attack), owner.Animation.FacingDirection);
     }
 }
