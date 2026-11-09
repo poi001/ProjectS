@@ -85,5 +85,11 @@ crashlytics-build.properties
 CLAUDE.md
 .claude/
 
+# Codex
+AGENTS.md
+AGENTS.override.md
+CODEX.md
+.codex/
+
 # 게임 기획 문서
 /docs/
