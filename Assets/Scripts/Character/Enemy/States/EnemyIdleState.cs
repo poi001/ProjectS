@@ -32,6 +32,12 @@ public class EnemyIdleState : EnemyState
             return;
         }
 
+        // 쉬는 도중에 끼어드는 보스 고유 전환(SoulKnight의 체력 50% 이하 기도 등)이 있으면 그쪽을 따른다.
+        if (owner.TryInterruptIdle())
+        {
+            return;
+        }
+
         if (Time.time - _enterTime >= _duration)
         {
             owner.ChangeToNextPattern();

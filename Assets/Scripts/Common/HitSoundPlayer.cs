@@ -2,12 +2,17 @@ using UnityEngine;
 
 // 이 캐릭터가 피해를 입을 때 피격음을 재생한다. 피해를 입는 캐릭터(Knight 등)의 프리팹 루트에 붙인다.
 // 같은 오브젝트의 CharacterVital.Damaged 이벤트를 구독하므로 대상 필터링이 필요 없고, 캐릭터마다 SoundDataSO만 바꿔 끼우면 된다.
-// 치명 일격으로 죽는 타격도 Damaged가 먼저 발생하므로 피격음이 난다.
+// 치명 일격도 피격음을 재생하되, 일반 피격음을 생략할 게이지가 꽉 차 있으면 재생하지 않는다.
+// 피해 무효 중에 맞으면(CharacterVital.DamageNullified) 일반 피격음 대신 피해 무효 피격음을 재생한다.
 [RequireComponent(typeof(CharacterVital))]
 public class HitSoundPlayer : MonoBehaviour
 {
     [Tooltip("이 캐릭터가 피해를 입을 때마다 재생할 피격 소리 데이터입니다. 비워 두면 소리가 나지 않습니다.")]
     [SerializeField] private SoundDataSO _hitSound;
+    [Tooltip("이 게이지가 꽉 찬 동안에는 일반 피격음을 생략합니다. Knight의 기절 효과음과 겹치지 않게 사용합니다. 비워 두면 게이지와 관계없이 재생합니다.")]
+    [SerializeField] private PatternGauge _muteWhenGaugeFull;
+    [Tooltip("피해 무효 중(SoulKnight의 기도 등)에 맞을 때 일반 피격음 대신 재생할 소리 데이터입니다. 비워 두면 소리가 나지 않습니다.")]
+    [SerializeField] private SoundDataSO _nullifiedHitSound;
 
     private CharacterVital _vital;
 
@@ -19,16 +24,33 @@ public class HitSoundPlayer : MonoBehaviour
     private void OnEnable()
     {
         _vital.Damaged += OnDamaged;
+        _vital.DamageNullified += OnDamageNullified;
     }
 
     private void OnDisable()
     {
         _vital.Damaged -= OnDamaged;
+        _vital.DamageNullified -= OnDamageNullified;
+    }
+
+    private void OnDamageNullified(DamageInfo damageInfo)
+    {
+        if (_nullifiedHitSound == null || !SoundManager.HasInstance)
+        {
+            return;
+        }
+
+        SoundManager.Instance.PlaySfx(_nullifiedHitSound);
     }
 
     private void OnDamaged(DamageInfo damageInfo)
     {
         if (_hitSound == null || !SoundManager.HasInstance)
+        {
+            return;
+        }
+
+        if (_muteWhenGaugeFull != null && _muteWhenGaugeFull.IsFull)
         {
             return;
         }

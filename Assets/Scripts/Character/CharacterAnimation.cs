@@ -9,6 +9,8 @@ using UnityEngine;
 public abstract class CharacterAnimation : MonoBehaviour
 {
     private const float FacingThreshold = 0.01f;
+    // HoldBefore로 멈춰 둘 때 경계 진행도보다 이만큼 앞에 둔다. (부동소수 오차로 경계 뒤의 그림이 보이지 않게 한다)
+    private const float HoldMargin = 0.001f;
 
     // 공격 애니메이션 상태들의 Speed Multiplier로 연결된 Animator 파라미터. 플레이어/적 컨트롤러 모두 같은 이름을 쓴다.
     private static readonly int AttackSpeedParameter = Animator.StringToHash("AttackSpeed");
@@ -61,6 +63,67 @@ public abstract class CharacterAnimation : MonoBehaviour
     public void Play(int stateHash)
     {
         animator.Play(stateHash, 0, 0f);
+    }
+
+    // 진행도(0~1)를 정해 그 지점부터 재생한다. 한 클립 안의 뒷부분(착지, 일어나기 등)만 이어서 재생할 때 쓴다.
+    public void Play(int stateHash, float normalizedTime)
+    {
+        animator.Play(stateHash, 0, normalizedTime);
+    }
+
+    // 해당 애니메이션이 이번 프레임의 재생으로 progress(0~1)에 도달하는지 확인한다. 아직 그 애니메이션으로 바뀌기 전이면 false다.
+    // 상태 로직이 Animator 갱신보다 먼저 실행되므로 이번 프레임에 진행할 양까지 더해 판단한다. (progress 이후의 그림이 한 프레임도 보이지 않는다)
+    public bool WillReach(int stateHash, float progress)
+    {
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+
+        if (stateInfo.shortNameHash != stateHash)
+        {
+            return false;
+        }
+
+        return stateInfo.normalizedTime + GetFrameProgress(stateInfo) >= progress;
+    }
+
+    // 재생 중인 애니메이션이 progress(0~1)를 넘지 않도록 그 직전 그림에서 멈춰 둔다. 멈춰 두는 동안 매 프레임(LogicUpdate) 호출한다.
+    // 한 클립의 앞부분(낙하, 미끄러짐)을 유지하다가 조건이 되면 Play(stateHash, progress)로 뒷부분을 이어 재생할 때 쓴다.
+    public void HoldBefore(int stateHash, float progress)
+    {
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+
+        if (stateInfo.shortNameHash != stateHash)
+        {
+            return;
+        }
+
+        float frameProgress = GetFrameProgress(stateInfo);
+
+        if (stateInfo.normalizedTime + frameProgress < progress)
+        {
+            return;
+        }
+
+        animator.Play(stateHash, 0, Mathf.Max(0f, progress - frameProgress - HoldMargin));
+    }
+
+    // 해당 애니메이션이 한 번 끝까지 재생되기까지 남은 시간(초). 아직 그 애니메이션으로 바뀌기 전이면 -1, 이미 끝났으면 0을 반환한다.
+    public float GetRemainingTime(int stateHash)
+    {
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+
+        if (stateInfo.shortNameHash != stateHash)
+        {
+            return -1f;
+        }
+
+        return Mathf.Max(0f, (1f - stateInfo.normalizedTime) * stateInfo.length);
+    }
+
+    // 이번 프레임에 애니메이션이 진행하는 양(진행도 단위). Animator.speed가 1이고 Update 모드가 Normal이라는 전제다.
+    // (stateInfo.length에는 상태의 Speed와 Speed Multiplier가 이미 반영되어 있다)
+    private static float GetFrameProgress(AnimatorStateInfo stateInfo)
+    {
+        return stateInfo.length > 0f ? Time.deltaTime / stateInfo.length : 0f;
     }
 
     // 해당 애니메이션이 재생 중이고 한 번 끝까지 재생되었는지 확인한다.

@@ -187,6 +187,13 @@ public abstract class Enemy : Character
     // Idle이 끝났을 때 호출된다. 보스마다 다음 패턴을 고르는 규칙이 다르므로 자식 클래스가 구현한다.
     public abstract void ChangeToNextPattern();
 
+    // Idle 중 매 프레임 호출된다. Idle 시간이 끝나기 전에 다른 상태로 바꿔야 하면 바꾸고 true를 반환한다.
+    // 기본은 끼어들지 않는다. (플레이어가 죽어 있는 동안에는 호출되지 않는다)
+    public virtual bool TryInterruptIdle()
+    {
+        return false;
+    }
+
     private void ApplyStats()
     {
         Vital.Initialize(_stats.MaxHealth);
