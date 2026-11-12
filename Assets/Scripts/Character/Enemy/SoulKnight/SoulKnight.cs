@@ -98,8 +98,6 @@ public sealed class SoulKnight : Enemy
     [Header("기도 (체력 50% 이하)")]
     [Tooltip("각성 전 Idle 중 현재 체력이 최대 체력의 이 비율 이하이면 각성하고 기도를 시작합니다. 각성은 전투당 한 번이라 기도도 한 번만 합니다.\n각성 전에는 체력이 1 아래로 내려가지 않으므로 큰 피해로 기도 전에 죽지 않습니다.\n0.5 = 체력 50% 이하")]
     [SerializeField, Range(0f, 1f)] private float _prayingHealthRatio = 0.5f;
-    [Tooltip("그 자리에서 기도 자세로 있는 시간입니다. 이 동안 플레이어의 공격은 맞지만 피해는 0입니다. 끝나면 Idle로 쉰 뒤 기존 패턴을 이어갑니다. (단위: 초)\nPraying 애니메이션(1.5초)보다 길면 마지막 프레임을 유지합니다.")]
-    [SerializeField, Min(0f)] private float _prayingDuration = 5f;
 
     [Header("모션 테스트")]
     [Tooltip("켜면 전투 패턴 대신 Idle 사이에 모든 모션을 순서대로 시험합니다. 공격 4타와 점프·점프공격은 이어서 재생하며 사망은 모션만 미리 봅니다.\n끄면 실제 전투 패턴을 시전합니다.")]
@@ -122,7 +120,6 @@ public sealed class SoulKnight : Enemy
     public SoulKnightStunRecoverState StunRecoverState { get; private set; }
     public SoulKnightPrayingState PrayingState { get; private set; }
 
-    public float PrayingDuration => _prayingDuration;
     public float PatternGaugeGain => _patternGaugeGain;
     public float StunDuration => _stunDuration;
     public GameObject StunVfxPrefab => _stunVfxPrefab;

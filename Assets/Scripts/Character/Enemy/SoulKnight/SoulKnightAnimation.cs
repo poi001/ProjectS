@@ -26,7 +26,7 @@ public sealed class SoulKnightAnimation : EnemyAnimation
     // 기절 후 일어나기. 컨트롤러의 StunRecover 상태에 기절과 같은 클립을 연결하고 Speed를 -1로 두어 거꾸로 재생한다.
     // 역재생이어도 Play로 처음부터 재생하고 IsFinished로 끝을 확인하면 된다. (진행도 0이 쓰러진 모습, 1이 일어선 모습)
     public static readonly int StunRecover = Animator.StringToHash("StunRecover");
-    // 기도. 반복하지 않으며, 기도 시간이 클립보다 길면 마지막 프레임을 유지한다.
+    // 기도. 반복하지 않는 5초 클립이며, 이 클립이 끝나는 시점이 기도가 끝나는 시점이다. (SoulKnightPrayingState)
     public static readonly int Praying = Animator.StringToHash("Praying");
 
     public override void Initialize()
