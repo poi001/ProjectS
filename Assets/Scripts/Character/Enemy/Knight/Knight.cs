@@ -1,3 +1,4 @@
+using MoreMountains.Feedbacks;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -5,7 +6,7 @@ using UnityEngine.Serialization;
 // 패턴 상태 인스턴스와 패턴 수치를 보관하고, 다음 패턴을 고르는 규칙(사거리 안: 공격 1회/2회, 사거리 밖: 점프/벽타기)을 담당한다.
 // 패턴이 하나 끝나면 기본적으로 Idle로 쉬어간다. Idle 없이 이어지는 예외는 세 가지뿐이다.
 // (공격 1회/2회 뒤 랜덤 구르기, 구르기 뒤 공격 1회/2회, 점프 뒤 공격 1회/2회) 구르기 직후의 공격 뒤에는 구르기를 하지 않는다.
-// 패턴 게이지(지침)가 꽉 찬 채로 패턴이 끝나면 위 규칙 대신 기절한다. 기절이 끝나면 일어나기를 거쳐 항상 Idle로 쉬어간다.
+// 패턴 게이지(지침)가 꽉 차도 패턴을 계속하며, 플레이어에게 피해를 입는 순간 기절한다. 기절이 끝나면 일어나기를 거쳐 항상 Idle로 쉬어간다.
 // 각 패턴의 진행과 종료 판단은 Knight/States/의 상태가 담당한다.
 // 수치는 기획에서 정해지지 않은 임시값이며 플레이하면서 인스펙터에서 조정한다. (GDD 9장)
 [RequireComponent(typeof(PatternGauge))]
@@ -95,7 +96,7 @@ public class Knight : Enemy
     [SerializeField] private HitboxShape _slideBodyHitbox = new HitboxShape(new Vector2(0.6f, -0.65f), new Vector2(2.5f, 1.2f));
 
     // 패턴 게이지는 Knight가 지친 정도다. 패턴을 시전할 때마다 차고, 공격으로 플레이어에게 피해를 입히면 준다.
-    // 꽉 찬 채로 패턴이 끝나면 다음 패턴 대신 기절한다. (진행 중인 패턴은 끝까지 한다.) 양은 게이지 최대값(PatternGauge) 기준이다.
+    // 꽉 찬 상태에서 플레이어에게 피해를 입으면 진행 중인 패턴을 끊고 기절한다. 양은 게이지 최대값(PatternGauge) 기준이다.
     [Header("패턴 게이지 (지침)")]
     [Tooltip("칼을 한 번 휘두를 때마다 게이지가 차는 양입니다. (최대값 100 기준이면 퍼센트)\n휘두르기 시작하는 시점에 채워지므로 공격 1회는 이 값만큼, 공격 2회는 휘두름마다 따로 차서 두 배만큼 찹니다.")]
     [FormerlySerializedAs("_attackGaugeGain")]
@@ -111,10 +112,25 @@ public class Knight : Enemy
     [SerializeField, Min(0f)] private float _hitGaugeReduction = 20f;
 
     [Header("기절")]
-    [Tooltip("게이지가 꽉 차서 기절했을 때 멈춰 있는 시간입니다. 이 시간 동안 게이지가 서서히 줄어 끝날 때 0이 됩니다. (단위: 초)\n기절 애니메이션(Death 클립)보다 길면 마지막 프레임을 유지합니다.")]
+    [Tooltip("게이지가 꽉 찬 상태에서 플레이어에게 피해를 입어 기절했을 때 멈춰 있는 시간입니다. 이 시간 동안 게이지가 서서히 줄어 끝날 때 0이 됩니다. (단위: 초)\n기절 애니메이션(Death 클립)보다 길면 마지막 프레임을 유지합니다.")]
     [SerializeField, Min(0f)] private float _stunDuration = 3f;
     [Tooltip("기절하는 동안 머리 위(StatusVfxDisplay의 Anchor)에 띄울 VFX 프리팹입니다. 반복 재생되는 Flipbook과 Manual 반환 PooledObject를 가진 프리팹을 씁니다.\n비워 두면 VFX 없이 기절합니다.")]
     [SerializeField] private GameObject _stunVfxPrefab;
+    [Tooltip("패턴 게이지가 꽉 찬 상태에서 플레이어에게 피해를 입어 기절할 때 한 번 재생할 효과음 데이터입니다. SoundManager의 Sfx 채널로 재생하며, 비워 두면 소리가 나지 않습니다.")]
+    [SerializeField] private SoundDataSO _stunSound;
+
+    [Header("기절 가능 표시")]
+    [Tooltip("패턴 게이지가 꽉 차 플레이어의 다음 피격으로 기절할 수 있을 때 재생하는 피드백입니다. All In 1 Sprite Shader의 파란 외곽선 머티리얼로 바꿉니다.")]
+    [SerializeField] private MMF_Player _stunReadyFeedbacks;
+    [Tooltip("기절 가능 표시가 끝났을 때 재생하는 피드백입니다. 게이지 감소, 기절 진입, 전투 종료, Release 시 원래 머티리얼로 되돌립니다.")]
+    [SerializeField] private MMF_Player _stunReadyEndFeedbacks;
+
+    [Tooltip("게이지가 꽉 찬 상태에서 피격되어 기절할 때 한 번 재생하는 외피 파괴 이펙트입니다. 피격 순간의 모습을 복사해 청백색으로 번쩍인 뒤 파란 외피와 파편이 사라집니다.")]
+    [SerializeField] private KnightStunBreakEffect _stunBreakEffectPrefab;
+
+    [Header("착지·벽 충돌 연출")]
+    [Tooltip("드롭킥 착지 또는 슬라이딩 종료 시 한 번 재생할 Feel 피드백입니다. 카메라 흔들림의 진동폭은 플레이어 피격의 2.5배이며, 시간·빈도는 피드백에서 조절합니다.")]
+    [SerializeField] private MMF_Player _impactFeedbacks;
 
     // 바닥을 찾을 때 아래로 검사하는 최대 거리
     private const float GroundSearchDistance = 100f;
@@ -125,6 +141,7 @@ public class Knight : Enemy
     private KnightAnimation _knightAnimation;
     // 지금 시전 중인 공격 1회/2회가 끝난 뒤 구르기를 할 수 있는지. (ChangeToAttackPattern에서 정한다.)
     private bool _canRollAfterAttack;
+    private bool _isStunReadyEffectActive;
 
     public new KnightAnimation Animation => _knightAnimation;
 
@@ -205,7 +222,44 @@ public class Knight : Enemy
             }
         }
 
+        if (_stunBreakEffectPrefab != null && PoolManager.HasInstance)
+        {
+            PoolManager.Instance.Prewarm(_stunBreakEffectPrefab.gameObject, 1);
+        }
+
+        _impactFeedbacks?.Initialization();
         return true;
+    }
+
+    protected override void OnInitCompleted()
+    {
+        base.OnInitCompleted();
+        Vital.Damaged += OnDamaged;
+        Vital.Died += RefreshStunReadyEffect;
+        PatternGauge.Changed += RefreshStunReadyEffect;
+
+        if (Target != null)
+        {
+            Target.Vital.Died += RefreshStunReadyEffect;
+        }
+
+        RefreshStunReadyEffect();
+    }
+
+    protected override void OnRelease()
+    {
+        _impactFeedbacks?.StopFeedbacks();
+        Vital.Damaged -= OnDamaged;
+        Vital.Died -= RefreshStunReadyEffect;
+        PatternGauge.Changed -= RefreshStunReadyEffect;
+
+        if (Target != null)
+        {
+            Target.Vital.Died -= RefreshStunReadyEffect;
+        }
+
+        SetStunReadyEffect(false);
+        base.OnRelease();
     }
 
     protected override void CreateStates()
@@ -244,11 +298,6 @@ public class Knight : Enemy
     // canRollAfterAttack: 이 공격이 끝난 뒤 구르기를 시전할 수 있는지. 구르기 직후의 공격은 false여서 구르기가 연달아 이어지지 않는다.
     public void ChangeToAttackPattern(bool canRollAfterAttack)
     {
-        if (TryChangeToStun())
-        {
-            return;
-        }
-
         _canRollAfterAttack = canRollAfterAttack;
         stateMachine.ChangeState(Random.value < _comboChance ? ComboState : AttackState);
     }
@@ -256,11 +305,6 @@ public class Knight : Enemy
     // 공격 1회/2회가 끝났을 때: 구르기가 가능하면 일정 확률로 Idle 없이 바로 구르기를 시전하고, 아니면 Idle로 간다.
     public void ChangeToPatternAfterAttack()
     {
-        if (TryChangeToStun())
-        {
-            return;
-        }
-
         if (_canRollAfterAttack && Random.value < _rollChance)
         {
             stateMachine.ChangeState(RollState);
@@ -310,7 +354,24 @@ public class Knight : Enemy
         return true;
     }
 
-    // 드롭킥이 낙하 지점에 부딪힐 때의 효과음을 재생한다.
+    // 드롭킥 착지 또는 슬라이딩 종료 지점에서 한 번만 호출한다. 중간에 패턴이 끊긴 경우에는 재생하지 않는다.
+    public void PlayImpactFeedbacks()
+    {
+        _impactFeedbacks?.PlayFeedbacks();
+    }
+
+    // 기절에 진입할 때 한 번만 재생한다. 기절 중 추가 피격으로는 호출되지 않는다.
+    public void PlayStunSound()
+    {
+        if (_stunSound == null || !SoundManager.HasInstance)
+        {
+            return;
+        }
+
+        SoundManager.Instance.PlaySfx(_stunSound);
+    }
+
+    // 드롭킥 착지와 슬라이딩 벽 충돌이 함께 쓰는 충격 효과음을 재생한다.
     public void PlayDropKickImpactSound()
     {
         if (_dropKickImpactSound == null || !SoundManager.HasInstance)
@@ -368,11 +429,6 @@ public class Knight : Enemy
     // 패턴이 끝났을 때 기본 동작: Idle로 쉬어가며 플레이어에게 공격할 시간을 준다. Idle이 끝나면 다음 패턴을 고른다.
     public void ChangeToRest()
     {
-        if (TryChangeToStun())
-        {
-            return;
-        }
-
         ChangeToIdle(_idleDuration);
     }
 
@@ -387,16 +443,55 @@ public class Knight : Enemy
         PatternGauge.Reduce(_hitGaugeReduction * hitCount);
     }
 
-    // 패턴이 끝나 다음 패턴(Idle, 구르기, 공격)으로 넘어가는 지점에서 호출한다.
-    // 게이지가 꽉 찼으면 다음 패턴 대신 기절하고 true를 반환한다.
-    private bool TryChangeToStun()
+    // 실제로 다음 피격에 기절할 수 있는 동안만 표시한다. 기절 진입 시에는 게이지가 아직 꽉 차 있어도 끈다.
+    public void RefreshStunReadyEffect()
     {
-        if (!PatternGauge.IsFull)
+        bool isReady = IsInitialized && !Vital.IsDead && !IsTargetDead && PatternGauge.IsFull
+            && CurrentState != StunState && CurrentState != StunRecoverState;
+        SetStunReadyEffect(isReady);
+    }
+
+    private void SetStunReadyEffect(bool isActive)
+    {
+        if (_isStunReadyEffectActive == isActive)
         {
-            return false;
+            return;
+        }
+
+        _isStunReadyEffectActive = isActive;
+        MMF_Player feedbacks = isActive ? _stunReadyFeedbacks : _stunReadyEndFeedbacks;
+
+        if (feedbacks != null)
+        {
+            feedbacks.PlayFeedbacks();
+        }
+    }
+
+    // 게이지가 꽉 찬 상태에서 플레이어에게 피해를 입으면 즉시 기절한다.
+    private void OnDamaged(DamageInfo damageInfo)
+    {
+        // 치명 피해는 사망을 우선하며, 기절 중 추가 피격으로 기절 시간을 초기화하지 않는다.
+        if (Vital.IsDead || !PatternGauge.IsFull || CurrentState == StunState || CurrentState == StunRecoverState)
+        {
+            return;
+        }
+
+        if (Target == null || damageInfo.Instigator != Target.gameObject)
+        {
+            return;
+        }
+
+        // 스턴 애니메이션으로 바뀌기 전에 피격 순간의 외형을 복사한다.
+        if (_stunBreakEffectPrefab != null && PoolManager.HasInstance)
+        {
+            GameObject effect = PoolManager.Instance.Spawn(_stunBreakEffectPrefab.gameObject, transform.position, Quaternion.identity);
+
+            if (effect != null)
+            {
+                effect.GetComponent<KnightStunBreakEffect>().Play(Animation.SpriteRenderer, damageInfo.HitPoint);
+            }
         }
 
         stateMachine.ChangeState(StunState);
-        return true;
     }
 }

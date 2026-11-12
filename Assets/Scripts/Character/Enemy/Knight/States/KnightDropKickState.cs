@@ -98,6 +98,7 @@ public class KnightDropKickState : KnightState
 
         knight.SpawnDropKickImpactEffect(_direction);
         knight.PlayDropKickImpactSound();
+        knight.PlayImpactFeedbacks();
         knight.Animation.Play(KnightAnimation.DropKickEnd);
     }
 }

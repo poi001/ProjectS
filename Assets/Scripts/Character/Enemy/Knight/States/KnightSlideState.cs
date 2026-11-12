@@ -86,6 +86,8 @@ public class KnightSlideState : KnightState
         _isEnding = true;
         knight.Movement.SetVelocity(Vector2.zero);
         HitBody();
+        knight.PlayDropKickImpactSound();
+        knight.PlayImpactFeedbacks();
         knight.Animation.Play(KnightAnimation.SlideEnd);
     }
 }
