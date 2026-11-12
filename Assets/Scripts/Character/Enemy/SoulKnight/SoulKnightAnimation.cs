@@ -26,6 +26,14 @@ public sealed class SoulKnightAnimation : EnemyAnimation
     // 기절 후 일어나기. 컨트롤러의 StunRecover 상태에 기절과 같은 클립을 연결하고 Speed를 -1로 두어 거꾸로 재생한다.
     // 역재생이어도 Play로 처음부터 재생하고 IsFinished로 끝을 확인하면 된다. (진행도 0이 쓰러진 모습, 1이 일어선 모습)
     public static readonly int StunRecover = Animator.StringToHash("StunRecover");
+    // 공격 4타. 컨트롤러 상태 이름은 Attack1~4이며, 3타는 찌르기(Thrust), 4타는 내려치기(Smash) 상태가 재생한다.
+    // Attack1·Attack2·Attack4 클립에는 칼이 맞는 프레임에 OnAttackHitFrame 애니메이션 이벤트를 넣는다. Attack3(찌르기)은 이벤트 없이 판정한다.
+    // 공격 전 딜레이. crouch_idle_0 한 장을 0.3초 보여 주는 반복 없는 클립(SoulKnight_AttackDelay)이며, 클립 길이가 딜레이 시간이다.
+    public static readonly int AttackDelay = Animator.StringToHash("AttackDelay");
+    public static readonly int Attack1 = Animator.StringToHash("Attack1");
+    public static readonly int Attack2 = Animator.StringToHash("Attack2");
+    public static readonly int Thrust = Animator.StringToHash("Attack3");
+    public static readonly int Smash = Animator.StringToHash("Attack4");
     // 기도. 반복하지 않는 5초 클립이며, 이 클립이 끝나는 시점이 기도가 끝나는 시점이다. (SoulKnightPrayingState)
     public static readonly int Praying = Animator.StringToHash("Praying");
 

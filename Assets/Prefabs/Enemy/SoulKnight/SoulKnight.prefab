@@ -710,7 +710,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 0.6666667}
+  m_Size: {x: 2, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -966,11 +966,49 @@ MonoBehaviour:
   _startIdleDuration: 1
   _jumpPatternChance: 0.5
   _idleDuration: 1
+  _awakenedRollWeight: 1
+  _awakenedJumpWeight: 1
+  _awakenedAttackWeight: 1
+  _attackRange: 3
+  _attackStepSpeed: 3
+  _attackGaugeGain: 10
+  _attack1Swing:
+    _hitbox:
+      _offset: {x: 1, y: -0.1}
+      _size: {x: 1.79, y: 2.2}
+    _showHitbox: 0
+    _damageMultiplier: 1
+    _stepStartProgress: 0.29
+    _stepEndProgress: 0.57
+  _attack2Swing:
+    _hitbox:
+      _offset: {x: 1.04, y: -0.12}
+      _size: {x: 1.7, y: 2.3}
+    _showHitbox: 0
+    _damageMultiplier: 1
+    _stepStartProgress: 0.5
+    _stepEndProgress: 1
+  _thrustDistance: 8.9
+  _thrustEndProgress: 0.75
+  _thrustBodyHitbox:
+    _offset: {x: 0.94, y: -0.05}
+    _size: {x: 3, y: 2.4}
+  _showThrustHitbox: 0
+  _thrustDamageMultiplier: 1
+  _smashSwing:
+    _hitbox:
+      _offset: {x: 1.45, y: -0.03}
+      _size: {x: 2.6, y: 2.27}
+    _showHitbox: 0
+    _damageMultiplier: 1
+    _stepStartProgress: 0
+    _stepEndProgress: 0
   _slideSpeed: 20
   _slideDamageMultiplier: 1
   _slideBodyHitbox:
     _offset: {x: 0.7, y: -0.65}
     _size: {x: 2.2, y: 1.2}
+  _showSlideHitbox: 0
   _slideGetUpProgress: 0.8
   _slideBounceHeight: 2
   _jumpHeight: 5
@@ -979,6 +1017,7 @@ MonoBehaviour:
   _jumpAttackImpactHitbox:
     _offset: {x: 0, y: -0.5}
     _size: {x: 4.6, y: 1.5}
+  _showJumpAttackHitbox: 0
   _jumpAttackLandProgress: 0.375
   _jumpAttackEndProgress: 0.875
   _impactSound: {fileID: 11400000, guid: 5279d2a5a87c5544c920817f9d761e9b, type: 2}
@@ -992,7 +1031,6 @@ MonoBehaviour:
   _stunReadyEndFeedbacks: {fileID: 722001992408925234}
   _stunBreakEffectPrefab: {fileID: 6170795404966453669, guid: a07c4e3670fcc6e448d4539b5d20b124, type: 3}
   _prayingHealthRatio: 0.5
-  _prayingDuration: 5
   _autoPreview: 0
   _testMotion: 0
 --- !u!114 &6245127679545588731

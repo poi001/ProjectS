@@ -119,6 +119,20 @@ public abstract class CharacterAnimation : MonoBehaviour
         return Mathf.Max(0f, (1f - stateInfo.normalizedTime) * stateInfo.length);
     }
 
+    // 해당 애니메이션이 progress(0~1)에 도달하기까지 남은 시간(초). 아직 그 애니메이션으로 바뀌기 전이면 -1, 이미 지났으면 0을 반환한다.
+    // 한 클립 안의 앞부분(찌르기 등)이 끝나는 시각에 맞춰 이동할 때 쓴다.
+    public float GetTimeUntil(int stateHash, float progress)
+    {
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+
+        if (stateInfo.shortNameHash != stateHash)
+        {
+            return -1f;
+        }
+
+        return Mathf.Max(0f, (progress - stateInfo.normalizedTime) * stateInfo.length);
+    }
+
     // 이번 프레임에 애니메이션이 진행하는 양(진행도 단위). Animator.speed가 1이고 Update 모드가 Normal이라는 전제다.
     // (stateInfo.length에는 상태의 Speed와 Speed Multiplier가 이미 반영되어 있다)
     private static float GetFrameProgress(AnimatorStateInfo stateInfo)

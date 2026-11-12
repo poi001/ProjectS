@@ -10,7 +10,8 @@ using UnityEngine;
 // 플레이어에게 피해를 입는 순간 기절한다. 기절이 끝나면 일어나기를 거쳐 Idle로 쉬어간다. (Enemy_GDD 5.4, 6.7)
 // 각 패턴의 진행과 종료 판단은 SoulKnight/States/의 상태가 담당한다.
 // Idle 중 체력이 50% 이하이면 전투당 한 번 그 자리에서 5초 기도한다. (피해 무효, Enemy_GDD 6.8) 기도가 끝나면 Idle 뒤 기존 패턴을 이어간다.
-// 각성 후 행동, 2페이즈, Attack·Health·CrouchIdle은 기획이 정해지지 않아 모션 테스트로만 재생한다.
+// 각성 후에는 위 두 묶음에 공격 4타(딜레이 → 1타 → 2타 → 찌르기 → 내려치기, 사거리 밖이면 딜레이 → 찌르기부터)를 더해 세 묶음 중 하나를 고른다. (Enemy_GDD 6.9)
+// 2페이즈, Health·CrouchIdle은 기획이 정해지지 않아 모션 테스트로만 재생한다.
 // 수치는 기획에서 정해지지 않은 임시값이며 플레이하면서 인스펙터에서 조정한다.
 [RequireComponent(typeof(PatternGauge))]
 public sealed class SoulKnight : Enemy
@@ -38,6 +39,47 @@ public sealed class SoulKnight : Enemy
     [Tooltip("패턴 묶음이 하나 끝난 뒤 Idle로 쉬어가는 시간입니다. Idle 애니메이션 길이(현재 1초)에 맞춘 값이므로 클립 길이를 바꾸면 함께 맞춥니다. (단위: 초)\n전투 시작 직후의 첫 Idle은 위쪽 '시작' 항목의 값을 씁니다.")]
     [SerializeField, Min(0f)] private float _idleDuration = 1f;
 
+    // 각성 후에는 세 묶음 중 하나를 가중치 비율로 고른다. 세 값이 같으면 각 1/3이다.
+    [Header("패턴 선택 (각성 후)")]
+    [Tooltip("각성 후 Idle이 끝났을 때 구르기→슬라이딩을 고르는 가중치입니다. 세 가중치의 비율로 확률이 정해집니다. (세 값이 같으면 각 1/3)\n0이면 고르지 않습니다.")]
+    [SerializeField, Min(0f)] private float _awakenedRollWeight = 1f;
+    [Tooltip("각성 후 Idle이 끝났을 때 점프→점프공격을 고르는 가중치입니다. 세 가중치의 비율로 확률이 정해집니다.\n0이면 고르지 않습니다.")]
+    [SerializeField, Min(0f)] private float _awakenedJumpWeight = 1f;
+    [Tooltip("각성 후 Idle이 끝났을 때 공격 4타를 고르는 가중치입니다. 세 가중치의 비율로 확률이 정해집니다.\n공격 사거리 안이면 1타부터, 밖이면 찌르기(3타)부터 시작합니다. 0이면 고르지 않습니다.")]
+    [SerializeField, Min(0f)] private float _awakenedAttackWeight = 1f;
+
+    // 각성 후 공격 4타: Attack1 → Attack2 → Thrust(찌르기) → Smash(내려치기)를 딜레이 없이 잇는다. 사거리 밖이면 Thrust부터 시작한다.
+    // Attack1·Attack2·Smash의 판정 시점은 각 클립에 넣은 애니메이션 이벤트(OnAttackHitFrame)가 정한다.
+    [Header("공격 (공통)")]
+    [Tooltip("플레이어와의 가로 거리가 이 값 이하이면 사거리 안으로 봅니다. 공격 4타를 고를 때 사거리 안이면 1타부터, 밖이면 찌르기(3타)부터 시작합니다. (단위: 월드 거리)")]
+    [SerializeField, Min(0f)] private float _attackRange = 3f;
+    [Tooltip("1타·2타를 휘두르면서 전진하는 가로 속도입니다. 각 휘두름의 전진 구간 동안만 전진합니다. (단위: 월드 거리/초)")]
+    [SerializeField, Min(0f)] private float _attackStepSpeed = 3f;
+    [Tooltip("공격 4타의 각 공격(1타·2타·찌르기·내려치기)을 시작할 때마다 패턴 게이지가 차는 양입니다. (최대값 100 기준이면 퍼센트)")]
+    [SerializeField, Min(0f)] private float _attackGaugeGain = 10f;
+
+    [Header("공격 1타·2타 (휘두르기)")]
+    [Tooltip("1타의 판정 범위·피해 배율·전진 구간입니다. 판정 범위는 Attack1 클립에서 칼이 가장 멀리 나간 프레임에 맞춘 임시값입니다.\n전진 구간 0.29~0.57은 칼을 휘두르는 3~4번째 프레임입니다.")]
+    [SerializeField] private SoulKnightSwing _attack1Swing = new SoulKnightSwing(new HitboxShape(new Vector2(1f, 0.07f), new Vector2(2f, 2.6f)), 1f, 0.29f, 0.57f);
+    [Tooltip("2타의 판정 범위·피해 배율·전진 구간입니다. 판정 범위는 Attack2 클립에서 칼이 가장 멀리 나간 프레임에 맞춘 임시값입니다.\n전진 구간 0.5~1은 다시 휘두르는 3~4번째 프레임입니다.")]
+    [SerializeField] private SoulKnightSwing _attack2Swing = new SoulKnightSwing(new HitboxShape(new Vector2(1.25f, 0f), new Vector2(2.5f, 2.5f)), 1f, 0.5f, 1f);
+
+    [Header("공격 3타 (찌르기)")]
+    [Tooltip("찌르는 동안 앞으로 돌진하는 거리입니다. 맵 크기와 관계없는 고정 거리이며, 현재 맵 가로 폭의 절반 정도로 맞춘 값입니다. (단위: 월드 거리)\n벽에 막히면 이동만 멈추고 찌르기는 끝까지 진행합니다.")]
+    [SerializeField, Min(0f)] private float _thrustDistance = 8.9f;
+    [Tooltip("Attack3 클립에서 찌르는 자세가 끝나는 지점입니다. 여기까지 돌진과 몸 판정을 하고, 이후(돌아오는 프레임)는 제자리에서 재생합니다. (애니메이션 진행도 0~1)\n현재 클립은 4프레임 중 앞 3프레임이 찌르는 자세이므로 0.75입니다.")]
+    [SerializeField, Range(0f, 1f)] private float _thrustEndProgress = 0.75f;
+    [Tooltip("찌르는 동안 플레이어가 몸에 닿았는지 확인하는 판정 범위입니다. 찌르는 모습(Attack3 클립 앞 3프레임의 불투명 영역)에 맞춘 값입니다.\nSoulKnight 위치 기준이며 오프셋 x는 찌르는 방향 기준입니다. 한 번의 찌르기에서 한 번만 맞습니다.")]
+    [SerializeField] private HitboxShape _thrustBodyHitbox = new HitboxShape(new Vector2(0.94f, -0.05f), new Vector2(3f, 2.4f));
+    [Tooltip("켜면 SoulKnight를 선택했을 때 Scene 뷰(프리팹 편집 화면 포함)에 찌르기 몸 판정 범위를 붉은 박스로 보여 줍니다. 끄면 이 공격의 박스만 숨깁니다.\n에디터 표시만 바꾸며 게임 동작에는 영향이 없습니다.")]
+    [SerializeField] private bool _showThrustHitbox = true;
+    [Tooltip("찌르기에 닿은 플레이어가 입는 피해량 배율입니다. 실제 피해 = SoulKnight 공격력 × 이 값입니다. 1 = 공격력 그대로")]
+    [SerializeField, Min(0f)] private float _thrustDamageMultiplier = 1f;
+
+    [Header("공격 4타 (내려치기)")]
+    [Tooltip("내려치기의 판정 범위·피해 배율입니다. 판정 범위는 Attack4 클립에서 칼이 가장 멀리 나간 프레임에 맞춘 임시값입니다.\n내려치기는 전진하지 않으므로 전진 구간 값은 쓰지 않습니다.")]
+    [SerializeField] private SoulKnightSwing _smashSwing = new SoulKnightSwing(new HitboxShape(new Vector2(1.75f, 0.03f), new Vector2(3.5f, 2.55f)), 1f, 0f, 0f);
+
     [Header("슬라이딩 (구르기 뒤)")]
     [Tooltip("슬라이딩으로 바닥을 미끄러지는 가로 속도입니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _slideSpeed = 20f;
@@ -45,6 +87,8 @@ public sealed class SoulKnight : Enemy
     [SerializeField, Min(0f)] private float _slideDamageMultiplier = 1f;
     [Tooltip("슬라이딩 중 플레이어가 몸에 닿았는지 확인하는 판정 범위입니다. 누워서 미끄러지는 모습(Sliding 클립의 불투명 영역)에 맞춘 가로로 긴 직사각형입니다.\nSoulKnight 위치 기준이며 오프셋 x는 미끄러지는 방향 기준입니다. 한 번의 슬라이딩에서 한 번만 맞습니다.")]
     [SerializeField] private HitboxShape _slideBodyHitbox = new HitboxShape(new Vector2(0.7f, -0.65f), new Vector2(2.2f, 1.2f));
+    [Tooltip("켜면 SoulKnight를 선택했을 때 Scene 뷰(프리팹 편집 화면 포함)에 슬라이딩 몸 충돌 범위를 붉은 박스로 보여 줍니다. 끄면 이 공격의 박스만 숨깁니다.\n에디터 표시만 바꾸며 게임 동작에는 영향이 없습니다.")]
+    [SerializeField] private bool _showSlideHitbox = true;
     [Tooltip("Sliding 클립에서 일어나는 모습이 시작되는 지점입니다. 이 지점 직전의 누운 모습에서 멈춘 채 미끄러지고 튕겨나며, 멈춘 뒤에 이 지점부터 끝까지 재생합니다. (애니메이션 진행도 0~1)\n현재 클립은 10프레임 중 9번째 프레임부터 일어나므로 0.8입니다. 클립의 프레임을 바꾸면 함께 맞춥니다.")]
     [SerializeField, Range(0f, 1f)] private float _slideGetUpProgress = 0.8f;
     [Tooltip("슬라이딩이 반대쪽 벽에 부딪힌 뒤 맵 중앙(좌우 벽의 가운데)을 향해 포물선으로 튕겨날 때 올라가는 최고 높이입니다. (단위: 월드 거리, 바닥 기준)\n낮을수록 체공 시간이 짧아 빠르게 날아가고, 높을수록 높이 떠올라 천천히 날아갑니다. 중앙에 착지하도록 가로 속도는 자동으로 계산합니다.\n0이면 튕겨나지 않고 벽 앞에서 일어납니다.")]
@@ -61,6 +105,8 @@ public sealed class SoulKnight : Enemy
     [SerializeField, Min(0f)] private float _jumpAttackDamageMultiplier = 1f;
     [Tooltip("점프공격이 바닥에 닿을 때 한 번 터지는 충격의 판정 범위입니다. SoulKnight 위치 기준이며 착지 모습의 먼지가 퍼지는 영역에 맞춘 값입니다.")]
     [SerializeField] private HitboxShape _jumpAttackImpactHitbox = new HitboxShape(new Vector2(0f, -0.5f), new Vector2(4.6f, 1.5f));
+    [Tooltip("켜면 SoulKnight를 선택했을 때 Scene 뷰(프리팹 편집 화면 포함)에 점프공격 충격 범위를 붉은 박스로 보여 줍니다. 끄면 이 공격의 박스만 숨깁니다.\n에디터 표시만 바꾸며 게임 동작에는 영향이 없습니다.")]
+    [SerializeField] private bool _showJumpAttackHitbox = true;
     [Tooltip("JumpAttack 클립에서 착지 모습이 시작되는 지점입니다. 이 지점 직전의 낙하 모습에서 멈춘 채 떨어지고, 바닥에 닿으면 이 지점부터 재생합니다. (애니메이션 진행도 0~1)\n현재 클립은 8프레임 중 4번째 프레임부터 착지이므로 0.375입니다.")]
     [SerializeField, Range(0f, 1f)] private float _jumpAttackLandProgress = 0.375f;
     [Tooltip("JumpAttack 클립의 착지 모습이 끝나는 지점입니다. 여기에 도달하면 Idle로 갑니다. (애니메이션 진행도 0~1)\n현재 클립의 마지막(8번째) 프레임은 빈 그림이라 그 앞에서 끝나도록 0.875로 둡니다. 클립을 고치면 1로 바꿉니다.")]
@@ -76,7 +122,7 @@ public sealed class SoulKnight : Enemy
     [Header("패턴 게이지 (지침)")]
     [Tooltip("슬라이딩 또는 점프공격(내려찍기)을 시작할 때 게이지가 차는 양입니다. (최대값 100 기준이면 퍼센트)\nKnight의 드롭킥·슬라이딩과 같은 값입니다. 구르기와 점프에서는 차지 않습니다.")]
     [SerializeField, Min(0f)] private float _patternGaugeGain = 15f;
-    [Tooltip("슬라이딩 몸 충돌, 점프공격 충격이 플레이어에게 피해를 입힐 때마다 게이지가 줄어드는 양입니다. (최대값 100 기준이면 퍼센트)\nKnight와 같은 값입니다.")]
+    [Tooltip("슬라이딩 몸 충돌, 점프공격 충격, 공격 4타(1타·2타·찌르기·내려치기)가 플레이어에게 피해를 입힐 때마다 게이지가 줄어드는 양입니다. (최대값 100 기준이면 퍼센트)\nKnight와 같은 값입니다.")]
     [SerializeField, Min(0f)] private float _hitGaugeReduction = 20f;
 
     [Header("기절")]
@@ -119,6 +165,21 @@ public sealed class SoulKnight : Enemy
     public SoulKnightStunState StunState { get; private set; }
     public SoulKnightStunRecoverState StunRecoverState { get; private set; }
     public SoulKnightPrayingState PrayingState { get; private set; }
+    public SoulKnightAttackDelayState AttackDelayState { get; private set; }
+    public SoulKnightAttack1State Attack1State { get; private set; }
+    public SoulKnightAttack2State Attack2State { get; private set; }
+    public SoulKnightThrustState ThrustState { get; private set; }
+    public SoulKnightSmashState SmashState { get; private set; }
+
+    public float AttackStepSpeed => _attackStepSpeed;
+    public float AttackGaugeGain => _attackGaugeGain;
+    public SoulKnightSwing Attack1Swing => _attack1Swing;
+    public SoulKnightSwing Attack2Swing => _attack2Swing;
+    public SoulKnightSwing SmashSwing => _smashSwing;
+    public float ThrustDistance => _thrustDistance;
+    public float ThrustEndProgress => _thrustEndProgress;
+    public HitboxShape ThrustBodyHitbox => _thrustBodyHitbox;
+    public float ThrustDamage => Stats.AttackPower * _thrustDamageMultiplier;
 
     public float PatternGaugeGain => _patternGaugeGain;
     public float StunDuration => _stunDuration;
@@ -209,6 +270,11 @@ public sealed class SoulKnight : Enemy
         StunState = new SoulKnightStunState(this, stateMachine);
         StunRecoverState = new SoulKnightStunRecoverState(this, stateMachine);
         PrayingState = new SoulKnightPrayingState(this, stateMachine);
+        AttackDelayState = new SoulKnightAttackDelayState(this, stateMachine);
+        Attack1State = new SoulKnightAttack1State(this, stateMachine);
+        Attack2State = new SoulKnightAttack2State(this, stateMachine);
+        ThrustState = new SoulKnightThrustState(this, stateMachine);
+        SmashState = new SoulKnightSmashState(this, stateMachine);
 
         _previewIndex = 0;
         _states.Clear();
@@ -253,6 +319,12 @@ public sealed class SoulKnight : Enemy
             return;
         }
 
+        if (IsAwakened)
+        {
+            ChangeToAwakenedPattern();
+            return;
+        }
+
         if (Random.value < _jumpPatternChance)
         {
             stateMachine.ChangeState(JumpState);
@@ -261,6 +333,41 @@ public sealed class SoulKnight : Enemy
         {
             stateMachine.ChangeState(RollState);
         }
+    }
+
+    // 각성 후: 구르기→슬라이딩, 점프→점프공격, 공격 4타 중 하나를 가중치 비율로 고른다. 가중치가 모두 0이면 공격 4타를 고른다.
+    private void ChangeToAwakenedPattern()
+    {
+        float totalWeight = _awakenedRollWeight + _awakenedJumpWeight + _awakenedAttackWeight;
+
+        if (totalWeight <= 0f)
+        {
+            ChangeToAttackPattern();
+            return;
+        }
+
+        float pick = Random.value * totalWeight;
+
+        if (pick < _awakenedRollWeight)
+        {
+            stateMachine.ChangeState(RollState);
+        }
+        else if (pick < _awakenedRollWeight + _awakenedJumpWeight)
+        {
+            stateMachine.ChangeState(JumpState);
+        }
+        else
+        {
+            ChangeToAttackPattern();
+        }
+    }
+
+    // 공격 4타를 시작한다. 먼저 딜레이(AttackDelayState)로 잠깐 멈춘 뒤, 플레이어가 사거리 안이면 1타부터, 밖이면 찌르기(3타)부터 시작해 내려치기까지 잇는다.
+    // 첫 공격은 딜레이에 들어가는 시점의 거리로 정한다.
+    private void ChangeToAttackPattern()
+    {
+        AttackDelayState.SetNextState(DistanceToTarget <= _attackRange ? Attack1State : ThrustState);
+        stateMachine.ChangeState(AttackDelayState);
     }
 
     protected override void OnRelease()
@@ -501,11 +608,38 @@ public sealed class SoulKnight : Enemy
         stateMachine.ChangeState(StunState);
     }
 
-    // 선택했을 때 슬라이딩 몸 충돌 범위와 점프공격 충격 범위를 그린다.
+    // 선택했을 때 슬라이딩 몸 충돌, 점프공격 충격, 공격 4타의 판정 범위를 그린다. 공격마다 인스펙터의 판정 범위 표시를 끄면 그 공격만 그리지 않는다.
     protected override void DrawHitboxGizmos(float facingDirection)
     {
-        DrawHitboxGizmo(_slideBodyHitbox, facingDirection, "슬라이딩 몸 충돌");
-        DrawHitboxGizmo(_jumpAttackImpactHitbox, facingDirection, "점프공격 충격");
+        if (_showSlideHitbox)
+        {
+            DrawHitboxGizmo(_slideBodyHitbox, facingDirection, "슬라이딩 몸 충돌");
+        }
+
+        if (_showJumpAttackHitbox)
+        {
+            DrawHitboxGizmo(_jumpAttackImpactHitbox, facingDirection, "점프공격 충격");
+        }
+
+        if (_attack1Swing.ShowHitbox)
+        {
+            DrawHitboxGizmo(_attack1Swing.Hitbox, facingDirection, "공격 1타");
+        }
+
+        if (_attack2Swing.ShowHitbox)
+        {
+            DrawHitboxGizmo(_attack2Swing.Hitbox, facingDirection, "공격 2타");
+        }
+
+        if (_showThrustHitbox)
+        {
+            DrawHitboxGizmo(_thrustBodyHitbox, facingDirection, "찌르기 몸 충돌");
+        }
+
+        if (_smashSwing.ShowHitbox)
+        {
+            DrawHitboxGizmo(_smashSwing.Hitbox, facingDirection, "내려치기");
+        }
     }
 
     // 몸 중심 높이에서 해당 방향(오른쪽 1, 왼쪽 -1)에 있는 벽 안쪽 면의 x 위치를 구한다. 벽이 없으면 false를 반환한다.
