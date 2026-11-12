@@ -1,3 +1,4 @@
+using MoreMountains.Feedbacks;
 using UnityEngine;
 
 // 플레이어 컴포넌트 참조와 초기화 순서, 상태 인스턴스를 관리하고 상태기계를 구동한다.
@@ -25,10 +26,10 @@ public class Player : Character
     [SerializeField] private float _wallSlideSpriteOffset = 0.3f;
     [Tooltip("벽 점프 시 벽 반대쪽으로 튀어 나가는 가로 속도입니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _wallJumpSpeedX = 7f;
-    [Tooltip("벽 점프의 높이 배율입니다. 1이면 땅에서 하는 점프와 같은 높이까지 오릅니다.")]
-    [SerializeField, Min(0f)] private float _wallJumpHeightRatio = 1f;
     [Tooltip("벽 점프 직후 좌우 입력을 무시하는 시간입니다. 튀어 나가자마자 같은 벽으로 되돌아가지 않게 합니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _wallJumpInputLockTime = 0.15f;
+    [Tooltip("벽 점프 후 이 시간 동안은 방금 떠난 벽 쪽으로 이동 키를 눌러도 그쪽으로 움직이거나 벽에 다시 붙지 않습니다. 벽 쪽 키를 누른 채 점프해도 바로 벽에 되돌아가지 않게 합니다. 반대쪽 입력에는 영향이 없습니다. (단위: 초)")]
+    [SerializeField, Min(0f)] private float _wallJumpWallBlockTime = 0.5f;
 
     [Header("대시")]
     [Tooltip("대시하는 동안의 가로 속도입니다. 이동 거리는 속도 × 지속 시간입니다. (단위: 월드 거리/초)")]
@@ -36,7 +37,7 @@ public class Player : Character
     [Tooltip("대시 지속 시간입니다. 이 시간 동안 피격 판정이 꺼져 적의 공격에 걸리지 않습니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _dashDuration = 0.25f;
     [Tooltip("대시가 끝난 뒤 다시 대시할 수 있을 때까지의 시간입니다. 공중에서는 이와 별개로 착지하거나 벽을 탈 때까지 1번만 대시할 수 있습니다. (단위: 초)")]
-    [SerializeField, Min(0f)] private float _dashCooldown = 0.5f;
+    [SerializeField, Min(0f)] private float _dashCooldown = 1f;
 
     [Header("공격")]
     [Tooltip("지상 콤보의 단계별 공격 설정입니다. 배열 크기가 곧 콤보 수이며, Animator에 Combo{n}, Combo{n}_End 상태가 이 수만큼 있어야 합니다.\n단계마다 피해 배율과 판정 범위를 정합니다.")]
@@ -54,15 +55,20 @@ public class Player : Character
     [SerializeField] private float _invincibleDuration = 1f;
     [Tooltip("피격 시 넉백 속도입니다. x는 피해를 입은 방향의 반대로 밀리는 속도, y는 위로 뜨는 속도입니다. (단위: 월드 거리/초)")]
     [SerializeField] private Vector2 _knockbackVelocity = new Vector2(5f, 5f);
+    [Tooltip("실제 피해를 입었을 때 재생하는 Feel 피드백입니다. 짧은 슬로우 모션과 붉은 화면 플래시의 시간·강도는 이 MMF_Player에서 조절합니다. Initialization Mode는 Script로 설정합니다.")]
+    [SerializeField] private MMF_Player _hitFeedbacks;
 
     private StateMachine<Player> _stateMachine;
     // 부모의 Animation 자동 프로퍼티와 직렬화 필드 이름이 겹치지 않도록 별도 필드에 보관한다.
     private PlayerAnimation _playerAnimation;
-    // 공중 행동 자원. 땅에 닿거나 벽을 타면 다시 채워진다. (RefillAirActions)
+    // 공중 행동 자원. 공중 점프는 땅에 닿을 때만(RefillAirActions), 공중 대시는 땅에 닿거나 벽을 탈 때(RefillAirDash) 다시 채워진다.
     private int _remainingAirJumps;
     private bool _hasAirDash;
     // 다시 대시할 수 있게 되는 시각 (대시 쿨타임)
     private float _dashReadyTime = float.NegativeInfinity;
+    // 벽 점프 직후 방금 떠난 벽 쪽 입력을 막는 시각과 그 벽의 방향 (오른쪽 1, 왼쪽 -1)
+    private float _wallBlockEndTime = float.NegativeInfinity;
+    private float _blockedWallDirection;
 
     public PlayerInputHandler InputHandler { get; private set; }
     public CharacterVital Vital { get; private set; }
@@ -76,7 +82,6 @@ public class Player : Character
     public float WallSlideSpeed => _wallSlideSpeed;
     public float WallSlideSpriteOffset => _wallSlideSpriteOffset;
     public float WallJumpSpeedX => _wallJumpSpeedX;
-    public float WallJumpHeightRatio => _wallJumpHeightRatio;
     public float WallJumpInputLockTime => _wallJumpInputLockTime;
     public float DashSpeed => _dashSpeed;
     public float DashDuration => _dashDuration;
@@ -108,8 +113,11 @@ public class Player : Character
     // 공중에서 점프 입력이 있고 공중 점프 횟수가 남아 있다면 공중 점프 가능 (코요테 타임 안이라면 CanJump가 먼저 쓰인다)
     public bool CanAirJump => InputHandler.HasBufferedJump && !Movement.IsGrounded && _remainingAirJumps > 0;
 
-    // 대시 입력이 있고, 쿨타임이 지났으며, 땅 위이거나 공중 대시가 남아 있다면 대시 가능
-    public bool CanDash => InputHandler.HasBufferedDash && Time.time >= _dashReadyTime && (Movement.IsGrounded || _hasAirDash);
+    // 대시 중에는 재진입하지 않으며, 쿨타임이 끝난 뒤 새로 누른 입력과 남은 대시 자원이 있어야 한다.
+    public bool CanDash => CurrentState != DashState
+        && Time.time >= _dashReadyTime
+        && InputHandler.IsDashBuffered(_dashReadyTime)
+        && (Movement.IsGrounded || _hasAirDash);
 
     // 초기화 순서: 컴포넌트 참조 → 스탯 적용 → 상태 생성 → Animator 설정. 이벤트 구독과 상태기계 시작은 OnInitCompleted에서 한다.
     protected override bool OnInit(BattleContext context)
@@ -142,6 +150,7 @@ public class Player : Character
         Animation.SetAttackSpeed(_stats.AttackSpeed);
         ValidateAttackSettings();
         ValidateAnimationStates();
+        _hitFeedbacks?.Initialization();
         return true;
     }
 
@@ -155,6 +164,8 @@ public class Player : Character
 
     protected override void OnRelease()
     {
+        Animation.StopWallSlideDust();
+        _hitFeedbacks?.StopFeedbacks();
         Vital.Damaged -= OnDamaged;
         Vital.Died -= OnDied;
         base.OnRelease();
@@ -186,10 +197,34 @@ public class Player : Character
         _stateMachine.PhysicsUpdate();
     }
 
-    // 공중 점프 횟수와 공중 대시를 다시 채운다. 땅에 닿아 있을 때와 벽을 타기 시작할 때 호출된다.
+    // 공중 점프 횟수와 공중 대시를 다시 채운다. 땅에 닿아 있을 때만 호출된다. (벽을 타도 공중 점프는 채워지지 않는다)
     public void RefillAirActions()
     {
         _remainingAirJumps = _stats.AirJumpCount;
+        RefillAirDash();
+    }
+
+    // 벽 점프를 시작할 때 호출한다. 지금부터 정해진 시간 동안 그 벽 쪽 이동 입력을 무시한다.
+    public void BlockWallDirection(float wallDirection)
+    {
+        _blockedWallDirection = wallDirection >= 0f ? 1f : -1f;
+        _wallBlockEndTime = Time.time + _wallJumpWallBlockTime;
+    }
+
+    // 막힌 벽 쪽 이동 입력이면 0으로, 아니면 입력을 그대로 돌려준다.
+    public float FilterMoveInput(float moveInput)
+    {
+        if (Time.time < _wallBlockEndTime && moveInput * _blockedWallDirection > 0f)
+        {
+            return 0f;
+        }
+
+        return moveInput;
+    }
+
+    // 공중 대시만 다시 채운다. 벽을 타기 시작할 때 호출된다.
+    public void RefillAirDash()
+    {
         _hasAirDash = true;
     }
 
@@ -297,6 +332,9 @@ public class Player : Character
     // 피해를 입으면 무적을 시작하고 진행 중이던 동작을 끊고 피격 상태로 전환한다.
     private void OnDamaged(DamageInfo damageInfo)
     {
+        // 치명 피해에도 화면 효과를 재생한다. 이어지는 KO 연출은 Feel의 시간 배율 스택 위에 적용된다.
+        _hitFeedbacks?.PlayFeedbacks();
+
         // 치명 피해는 Died에서 사망 상태로 전환하므로 피격 상태를 거치지 않는다.
         if (Vital.IsDead)
         {

@@ -12,7 +12,7 @@ public abstract class PlayerState : State<Player>
 
     protected float GetMoveInput()
     {
-        return owner.InputHandler.MoveInput;
+        return owner.FilterMoveInput(owner.InputHandler.MoveInput);
     }
 
     protected bool IsMoving()

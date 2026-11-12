@@ -8,7 +8,7 @@ public class PlayerInputHandler : MonoBehaviour
     [Header("입력 버퍼")]
     [SerializeField] private float _jumpBufferTime = 0.25f;
     [SerializeField] private float _attackBufferTime = 0.25f;
-    [Tooltip("대시 입력을 기억해 두는 시간입니다. 대시를 쓸 수 없을 때(쿨타임 등) 눌러도 이 시간 안에 쓸 수 있게 되면 대시합니다. (단위: 초)")]
+    [Tooltip("대시 입력을 기억해 두는 시간입니다. 쿨타임이 끝난 뒤 누른 입력만 유효하며, 대시 중이나 쿨타임 중 누른 입력은 다음 대시로 예약되지 않습니다. (단위: 초)")]
     [SerializeField] private float _dashBufferTime = 0.25f;
 
     private PlayerInputActions _inputActions;
@@ -23,9 +23,6 @@ public class PlayerInputHandler : MonoBehaviour
 
     // 공격 버퍼 시간 안에 눌린 공격 입력이 아직 소비되지 않고 남아 있는지 여부
     public bool HasBufferedAttack => IsAttackBuffered(0f);
-
-    // 대시 버퍼 시간 안에 눌린 대시 입력이 아직 소비되지 않고 남아 있는지 여부
-    public bool HasBufferedDash => Time.time - _lastDashPressedTime <= _dashBufferTime;
 
     private void Awake()
     {
@@ -83,6 +80,12 @@ public class PlayerInputHandler : MonoBehaviour
     public void ConsumeDashBuffer()
     {
         _lastDashPressedTime = float.NegativeInfinity;
+    }
+
+    // 대시 사용 가능 시각 이후에 누른 입력만 인정한다. 쿨타임 중 입력이 종료 직후 발동되는 것을 막는다.
+    public bool IsDashBuffered(float earliestPressTime)
+    {
+        return _lastDashPressedTime >= earliestPressTime && Time.time - _lastDashPressedTime <= _dashBufferTime;
     }
 
     private void OnMove(InputAction.CallbackContext context)

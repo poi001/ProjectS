@@ -1,3 +1,4 @@
+using MoreMountains.Feedbacks;
 using UnityEngine;
 
 // 플레이어 전용 애니메이션. 애니메이션 상태 이름(해시)과 콤보 등록을 담당한다.
@@ -16,8 +17,43 @@ public class PlayerAnimation : CharacterAnimation
     public static readonly int Dash = Animator.StringToHash("Dash");
     public static readonly int Dead = Animator.StringToHash("Dead");
 
+    [Header("벽타기 연출")]
+    [Tooltip("벽타기 중 손의 먼지를 표시하는 Feel 피드백입니다. Play에서 먼지 오브젝트를 켜고 Stop에서 끄도록 구성합니다. 초기화 방식은 Script로 둡니다.")]
+    [SerializeField] private MMF_Player _wallSlideFeedbacks;
+
     private int[] _comboHashes = new int[0];
     private int[] _comboEndHashes = new int[0];
+
+    public override void Initialize()
+    {
+        base.Initialize();
+
+        if (_wallSlideFeedbacks != null)
+        {
+            _wallSlideFeedbacks.Initialization();
+        }
+    }
+
+    public void PlayWallSlideDust()
+    {
+        if (_wallSlideFeedbacks != null)
+        {
+            _wallSlideFeedbacks.PlayFeedbacks();
+        }
+    }
+
+    public void StopWallSlideDust()
+    {
+        if (_wallSlideFeedbacks != null)
+        {
+            _wallSlideFeedbacks.StopFeedbacks();
+        }
+    }
+
+    private void OnDisable()
+    {
+        StopWallSlideDust();
+    }
 
     // 콤보 애니메이션 상태를 "Combo{n}", "Combo{n}_End" 이름 규칙으로 찾아 등록하고, 실제로 사용할 수 있는 콤보 수를 반환한다.
     // 캐릭터마다 Animator(Override Controller)가 달라도 같은 규칙의 상태 이름만 있으면 콤보 수를 자유롭게 정할 수 있다.

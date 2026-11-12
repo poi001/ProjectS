@@ -28,6 +28,9 @@ public class KOEffectManager : MonoBehaviour
     [Tooltip("연출할 메인 카메라입니다. 직교(Orthographic) 카메라여야 합니다. 씬마다 다르므로 씬에 놓인 BattleManagers 인스턴스에서 연결합니다.")]
     [SerializeField] private Camera _camera;
 
+    [Tooltip("KO 연출에서 이동할 카메라의 부모 Transform입니다. 피격 흔들림은 자식 카메라에서 별도로 처리합니다. 카메라와 같은 월드 위치에 두고 씬마다 연결합니다. 비워 두면 카메라 자체를 이동합니다.")]
+    [SerializeField] private Transform _cameraMotionRoot;
+
     [Tooltip("줌인했을 때의 카메라 직교 크기(화면 세로 절반의 월드 길이)입니다. 원래 크기보다 작을수록 더 확대됩니다. 원래 크기 이상이면 줌하지 않습니다.")]
     [SerializeField, Min(0.1f)] private float _zoomedOrthographicSize = 3f;
 
@@ -45,6 +48,8 @@ public class KOEffectManager : MonoBehaviour
     // 지금 KO 연출 중인 캐릭터. 연출 중이 아니면 null이다.
     private GameObject _activeTarget;
 
+    private Transform CameraMotionTarget => _cameraMotionRoot != null ? _cameraMotionRoot : _camera.transform;
+
     private void Awake()
     {
         if (!ValidateSettings())
@@ -54,7 +59,7 @@ public class KOEffectManager : MonoBehaviour
             return;
         }
 
-        _homePosition = _camera.transform.position;
+        _homePosition = CameraMotionTarget.position;
         _homeOrthographicSize = _camera.orthographicSize;
         _homePoint.position = _homePosition;
 
@@ -172,7 +177,7 @@ public class KOEffectManager : MonoBehaviour
 
         if (_camera != null)
         {
-            _camera.transform.position = _homePosition;
+            CameraMotionTarget.position = _homePosition;
             _camera.orthographicSize = _homeOrthographicSize;
         }
     }
@@ -183,7 +188,7 @@ public class KOEffectManager : MonoBehaviour
 
         if (move != null)
         {
-            move.AnimatePositionTarget = _camera.gameObject;
+            move.AnimatePositionTarget = CameraMotionTarget.gameObject;
         }
     }
 
