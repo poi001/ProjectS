@@ -3,6 +3,7 @@
 // 애니메이션은 0~1.5초에 Pray_0~9, 1.5~4.5초에 Pray_9를 유지, 4.5~5초에 Pray_10·11이다. 클립을 고치면 기도 시간도 함께 바뀐다.
 // 기도하는 동안에는 피해 무효다. 플레이어의 공격은 맞은 것으로 처리되어 히트 이펙트와 0 데미지 숫자, 전용 피격음이 나오지만 체력은 줄지 않는다.
 // 피해를 입지 않으므로 패턴 게이지가 꽉 차 있어도 기절하지 않으며, 그동안 기절 가능 표시도 끈다.
+// 기도하는 동안 발밑에 보라색 룬(pixelFX arcane/rune-circle, 4초 반복)이 돈다. 시작·끝에 0.2초 페이드하며, Feel 피드백(SoulKnight의 기도 연출)이 담당한다.
 public class SoulKnightPrayingState : SoulKnightState
 {
     public SoulKnightPrayingState(SoulKnight owner, StateMachine<Enemy> stateMachine)
@@ -16,12 +17,14 @@ public class SoulKnightPrayingState : SoulKnightState
         boss.Movement.SetVelocityX(0f);
         boss.Animation.Play(SoulKnightAnimation.Praying);
         boss.RefreshStunReadyEffect();
+        boss.PlayPrayingRune();
     }
 
-    // 플레이어 사망 등으로 중간에 끊겨도 피해 무효를 끈다.
+    // 플레이어 사망 등으로 중간에 끊겨도 피해 무효를 끄고 발밑 룬을 지운다.
     public override void Exit()
     {
         boss.Vital.SetDamageNullified(false);
+        boss.StopPrayingRune();
     }
 
     public override void LogicUpdate()

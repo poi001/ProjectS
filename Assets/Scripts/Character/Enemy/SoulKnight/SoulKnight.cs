@@ -11,7 +11,8 @@ using UnityEngine;
 // 각 패턴의 진행과 종료 판단은 SoulKnight/States/의 상태가 담당한다.
 // Idle 중 체력이 50% 이하이면 전투당 한 번 그 자리에서 5초 기도한다. (피해 무효, Enemy_GDD 6.8) 기도가 끝나면 Idle 뒤 기존 패턴을 이어간다.
 // 각성 후에는 위 두 묶음에 공격 4타(딜레이 → 1타 → 2타 → 찌르기 → 내려치기, 사거리 밖이면 딜레이 → 찌르기부터)를 더해 세 묶음 중 하나를 고른다. (Enemy_GDD 6.9)
-// 2페이즈, Health·CrouchIdle은 기획이 정해지지 않아 모션 테스트로만 재생한다.
+// 1페이즈의 체력을 모두 잃으면 죽지 않고 1페이즈 다운(쓰러짐, 시네마틱 5초) → 체력 충전 → 2페이즈로 넘어간다. (Enemy_GDD 1.1, 6.10)
+// 2페이즈 패턴은 아직 정해지지 않아 각성 후 패턴을 그대로 쓴다. Health·CrouchIdle은 모션 테스트로만 재생한다.
 // 수치는 기획에서 정해지지 않은 임시값이며 플레이하면서 인스펙터에서 조정한다.
 [RequireComponent(typeof(PatternGauge))]
 public sealed class SoulKnight : Enemy
@@ -141,6 +142,16 @@ public sealed class SoulKnight : Enemy
     [Tooltip("게이지가 꽉 찬 상태에서 피격되어 기절할 때 한 번 재생하는 외피 파괴 이펙트입니다. Knight와 같은 프리팹을 씁니다.\n피격 순간의 모습을 복사해 청백색으로 번쩍인 뒤 파란 외피와 파편이 사라집니다. 비워 두면 이펙트 없이 기절합니다.")]
     [SerializeField] private KnightStunBreakEffect _stunBreakEffectPrefab;
 
+    [Header("1페이즈 다운 (체력 소진 시 페이즈 전환 연출)")]
+    [Tooltip("1페이즈의 체력을 모두 잃었을 때 쓰러져 있는 시간입니다. 이 동안 시네마틱(카메라 줌인, 위아래 검은 띠, 전투 UI 숨김, 플레이어 입력 잠금)이 진행됩니다. (단위: 초)\n시간이 지나면 화면이 원래대로 돌아오고 체력이 충전된 뒤 2페이즈가 시작됩니다. 쓰러진 애니메이션은 반복 재생됩니다.")]
+    [SerializeField, Min(0f)] private float _phase1DownDuration = 5f;
+
+    [Header("기도 연출")]
+    [Tooltip("기도를 시작할 때 재생하는 Feel 피드백입니다. 발밑 룬(PrayingRune)을 켜고 0.2초 동안 서서히 나타나게 합니다. 초기화 방식은 Script로 둡니다.\n비워 두면 룬 없이 기도합니다.")]
+    [SerializeField] private MMF_Player _prayingRuneFeedbacks;
+    [Tooltip("기도가 끝날 때 재생하는 Feel 피드백입니다. 발밑 룬을 0.2초 동안 서서히 지운 뒤 끕니다. 초기화 방식은 Script로 둡니다.")]
+    [SerializeField] private MMF_Player _prayingRuneEndFeedbacks;
+
     [Header("기도 (체력 50% 이하)")]
     [Tooltip("각성 전 Idle 중 현재 체력이 최대 체력의 이 비율 이하이면 각성하고 기도를 시작합니다. 각성은 전투당 한 번이라 기도도 한 번만 합니다.\n각성 전에는 체력이 1 아래로 내려가지 않으므로 큰 피해로 기도 전에 죽지 않습니다.\n0.5 = 체력 50% 이하")]
     [SerializeField, Range(0f, 1f)] private float _prayingHealthRatio = 0.5f;
@@ -151,6 +162,8 @@ public sealed class SoulKnight : Enemy
     private int _previewIndex;
     private SoulKnightAnimation _soulKnightAnimation;
     private bool _isStunReadyEffectActive;
+    // 이 보스가 연 시네마틱이 진행 중인지
+    private bool _isCinematicPlaying;
 
     public bool AutoPreview => _autoPreview;
     // 1페이즈 각성 여부. 체력이 기도 비율(50%) 이하인 것을 Idle에서 처음 확인해 기도에 들어가는 순간 true가 된다. 전투가 시작되면 false다.
@@ -165,12 +178,14 @@ public sealed class SoulKnight : Enemy
     public SoulKnightStunState StunState { get; private set; }
     public SoulKnightStunRecoverState StunRecoverState { get; private set; }
     public SoulKnightPrayingState PrayingState { get; private set; }
+    public SoulKnightPhase1DownState Phase1DownState { get; private set; }
     public SoulKnightAttackDelayState AttackDelayState { get; private set; }
     public SoulKnightAttack1State Attack1State { get; private set; }
     public SoulKnightAttack2State Attack2State { get; private set; }
     public SoulKnightThrustState ThrustState { get; private set; }
     public SoulKnightSmashState SmashState { get; private set; }
 
+    public float Phase1DownDuration => _phase1DownDuration;
     public float AttackStepSpeed => _attackStepSpeed;
     public float AttackGaugeGain => _attackGaugeGain;
     public SoulKnightSwing Attack1Swing => _attack1Swing;
@@ -257,6 +272,17 @@ public sealed class SoulKnight : Enemy
             _impactFeedbacks.Initialization();
         }
 
+        // 기도 룬 피드백은 초기화할 때 룬을 꺼 둔다.
+        if (_prayingRuneFeedbacks != null)
+        {
+            _prayingRuneFeedbacks.Initialization();
+        }
+
+        if (_prayingRuneEndFeedbacks != null)
+        {
+            _prayingRuneEndFeedbacks.Initialization();
+        }
+
         return true;
     }
 
@@ -270,6 +296,7 @@ public sealed class SoulKnight : Enemy
         StunState = new SoulKnightStunState(this, stateMachine);
         StunRecoverState = new SoulKnightStunRecoverState(this, stateMachine);
         PrayingState = new SoulKnightPrayingState(this, stateMachine);
+        Phase1DownState = new SoulKnightPhase1DownState(this, stateMachine);
         AttackDelayState = new SoulKnightAttackDelayState(this, stateMachine);
         Attack1State = new SoulKnightAttack1State(this, stateMachine);
         Attack2State = new SoulKnightAttack2State(this, stateMachine);
@@ -377,6 +404,9 @@ public sealed class SoulKnight : Enemy
             _impactFeedbacks.StopFeedbacks();
         }
 
+        StopPrayingRuneFeedbacks();
+        // 시네마틱 도중에 Release되면 상태의 Exit이 호출되지 않으므로 여기서 닫는다. (플레이어 입력과 카메라가 잠긴 채 남지 않게 한다)
+        EndCinematic();
         Vital.Damaged -= OnDamaged;
         Vital.Died -= RefreshStunReadyEffect;
         PatternGauge.Changed -= RefreshStunReadyEffect;
@@ -531,6 +561,78 @@ public sealed class SoulKnight : Enemy
         if (_impactFeedbacks != null)
         {
             _impactFeedbacks.PlayFeedbacks();
+        }
+    }
+
+    // 1페이즈의 체력을 모두 잃었을 때: 진행 중인 패턴을 끊고 1페이즈 다운 연출로 들어간다. 연출이 끝나면 그 상태가 StartPhaseRefill을 호출한다.
+    protected override void OnPhaseHealthDepleted()
+    {
+        stateMachine.ChangeState(Phase1DownState);
+    }
+
+    // 시네마틱을 연다. 카메라(CinematicManager), 검은 띠·전투 UI(CinematicUI), 플레이어 입력(Player)이 이벤트를 받아 처리한다.
+    // 이미 열려 있으면 다시 열지 않는다. 연 쪽은 EndCinematic으로 반드시 닫는다.
+    public void BeginCinematic()
+    {
+        if (_isCinematicPlaying)
+        {
+            return;
+        }
+
+        _isCinematicPlaying = true;
+        EventBus<CinematicStartedEvent>.Publish(new CinematicStartedEvent(gameObject));
+    }
+
+    // 시네마틱을 닫는다. 열려 있지 않으면 아무것도 하지 않는다.
+    public void EndCinematic()
+    {
+        if (!_isCinematicPlaying)
+        {
+            return;
+        }
+
+        _isCinematicPlaying = false;
+        EventBus<CinematicEndedEvent>.Publish(new CinematicEndedEvent(gameObject));
+    }
+
+    // 기도를 시작할 때 발밑 룬을 서서히 나타나게 한다. 사라지는 중이었다면 멈추고 다시 나타낸다.
+    public void PlayPrayingRune()
+    {
+        if (_prayingRuneEndFeedbacks != null)
+        {
+            _prayingRuneEndFeedbacks.StopFeedbacks();
+        }
+
+        if (_prayingRuneFeedbacks != null)
+        {
+            _prayingRuneFeedbacks.PlayFeedbacks();
+        }
+    }
+
+    // 기도가 끝날 때 발밑 룬을 서서히 지운 뒤 끈다.
+    public void StopPrayingRune()
+    {
+        if (_prayingRuneFeedbacks != null)
+        {
+            _prayingRuneFeedbacks.StopFeedbacks();
+        }
+
+        if (_prayingRuneEndFeedbacks != null)
+        {
+            _prayingRuneEndFeedbacks.PlayFeedbacks();
+        }
+    }
+
+    private void StopPrayingRuneFeedbacks()
+    {
+        if (_prayingRuneFeedbacks != null)
+        {
+            _prayingRuneFeedbacks.StopFeedbacks();
+        }
+
+        if (_prayingRuneEndFeedbacks != null)
+        {
+            _prayingRuneEndFeedbacks.StopFeedbacks();
         }
     }
 
