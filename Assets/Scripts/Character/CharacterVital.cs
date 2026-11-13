@@ -10,7 +10,13 @@ public class CharacterVital : MonoBehaviour, IDamageable
 
     public float MaxHealth { get; private set; }
     public float CurrentHealth { get; private set; }
-    public bool IsDead => CurrentHealth <= 0f;
+    // 체력을 모두 잃었더라도 소진 상태(IsDepleted)인 동안에는 죽은 것으로 보지 않는다.
+    public bool IsDead => CurrentHealth <= 0f && !IsDepleted;
+    // 체력을 모두 잃어도 죽지 않고 소진 상태가 되는지 여부. 기본은 꺼져 있어 체력이 0이 되면 죽는다. (다음 페이즈가 남은 보스가 켠다)
+    public bool SurvivesDepletion { get; private set; }
+    // 소진 상태. 체력을 모두 잃었지만 죽지 않고 다시 채워지기를 기다리는 중이다. (보스 페이즈 전환)
+    // 이 동안에는 피해도 회복도 받지 않으며, 맞아도 피해 이벤트·데미지 숫자·피격음이 발생하지 않는다. EndDepletion으로 끝낸다.
+    public bool IsDepleted { get; private set; }
     // 무적 중에는 피해를 입지 않는다. (피해 이벤트, 데미지 숫자, 피격음도 발생하지 않는다.)
     public bool IsInvincible => Time.time < _invincibleEndTime;
     // 피해 무효 중에는 맞기는 하지만 체력이 줄지 않는다. (SoulKnight의 기도 등)
@@ -24,7 +30,9 @@ public class CharacterVital : MonoBehaviour, IDamageable
     // 피해 무효 중에 맞았을 때 호출된다. 체력은 그대로이며 Damaged는 호출되지 않는다. (피해 무효 전용 피격음 등)
     public event Action<DamageInfo> DamageNullified;
     public event Action Died;
-    // 초기화·피해·회복으로 체력이 바뀔 때마다 호출된다. (체력바 등 이 캐릭터를 직접 참조하는 UI용) 바뀐 값은 CurrentHealth/MaxHealth로 읽는다.
+    // 체력을 모두 잃었지만 죽지 않고 소진 상태가 되었을 때 호출된다. (SurvivesDepletion이 켜져 있을 때) Died와 CharacterDiedEvent는 발생하지 않는다.
+    public event Action Depleted;
+    // 초기화·피해·회복·충전으로 체력이 바뀔 때마다 호출된다. (체력바 등 이 캐릭터를 직접 참조하는 UI용) 바뀐 값은 CurrentHealth/MaxHealth로 읽는다.
     public event Action HealthChanged;
 
     public void Initialize(float maxHealth)
@@ -34,6 +42,42 @@ public class CharacterVital : MonoBehaviour, IDamageable
         _invincibleEndTime = float.NegativeInfinity;
         IsDamageNullified = false;
         MinimumHealth = 0f;
+        SurvivesDepletion = false;
+        IsDepleted = false;
+        HealthChanged?.Invoke();
+    }
+
+    // 체력을 모두 잃었을 때 죽는 대신 소진 상태가 되게 할지 정한다. 마지막 페이즈처럼 실제로 죽어야 할 때는 끈다.
+    public void SetSurvivesDepletion(bool survivesDepletion)
+    {
+        SurvivesDepletion = survivesDepletion;
+    }
+
+    // 소진 상태에서 체력을 채워 넣는다. (페이즈 전환의 체력 충전 연출) 최대 체력을 maxHealth로 바꾸고 그중 ratio(0 ~ 1)만큼 채운다.
+    // 회복이 아니므로 회복 숫자(HealEvent)는 띄우지 않는다. 소진 상태가 아니면 아무것도 하지 않는다.
+    public void SetRefillHealth(float maxHealth, float ratio)
+    {
+        if (!IsDepleted)
+        {
+            return;
+        }
+
+        MaxHealth = maxHealth;
+        CurrentHealth = maxHealth * Mathf.Clamp01(ratio);
+        HealthChanged?.Invoke();
+    }
+
+    // 소진 상태를 끝낸다. 최대 체력을 maxHealth로 바꿔 가득 채우고, 다시 피해를 입을 수 있게 한다. 소진 상태가 아니면 아무것도 하지 않는다.
+    public void EndDepletion(float maxHealth)
+    {
+        if (!IsDepleted)
+        {
+            return;
+        }
+
+        MaxHealth = maxHealth;
+        CurrentHealth = maxHealth;
+        IsDepleted = false;
         HealthChanged?.Invoke();
     }
 
@@ -58,7 +102,7 @@ public class CharacterVital : MonoBehaviour, IDamageable
 
     public bool TakeDamage(DamageInfo damageInfo)
     {
-        if (IsDead || IsInvincible || damageInfo.Amount <= 0f)
+        if (IsDead || IsDepleted || IsInvincible || damageInfo.Amount <= 0f)
         {
             return false;
         }
@@ -79,11 +123,20 @@ public class CharacterVital : MonoBehaviour, IDamageable
         // 연출 시스템(데미지 숫자 등)용. 체력보다 큰 피해는 실제로 깎인 양만 알린다.
         EventBus<DamageTakenEvent>.Publish(new DamageTakenEvent(gameObject, damageInfo.Instigator, previousHealth - CurrentHealth, damageInfo.HitPoint));
 
+        // 위의 Damaged 구독자는 체력을 모두 잃은 이 피격을 치명 피해(IsDead)로 본다. 소진 상태는 그 뒤에 시작한다.
         if (IsDead)
         {
-            Died?.Invoke();
-            // 연출 시스템(KO 연출 등)용. 사망 상태 전환까지 끝난 뒤에 알린다.
-            EventBus<CharacterDiedEvent>.Publish(new CharacterDiedEvent(gameObject));
+            if (SurvivesDepletion)
+            {
+                IsDepleted = true;
+                Depleted?.Invoke();
+            }
+            else
+            {
+                Died?.Invoke();
+                // 연출 시스템(KO 연출 등)용. 사망 상태 전환까지 끝난 뒤에 알린다.
+                EventBus<CharacterDiedEvent>.Publish(new CharacterDiedEvent(gameObject));
+            }
         }
 
         return true;
@@ -91,7 +144,7 @@ public class CharacterVital : MonoBehaviour, IDamageable
 
     public bool Heal(float healAmount)
     {
-        if (IsDead || healAmount <= 0f || CurrentHealth >= MaxHealth)
+        if (IsDead || IsDepleted || healAmount <= 0f || CurrentHealth >= MaxHealth)
         {
             return false;
         }

@@ -82,10 +82,12 @@ public class HPBar : MonoBehaviour
     public void SetHealth(float currentHealth, float maxHealth)
     {
         float ratio = CalculateRatio(currentHealth, maxHealth);
+        bool isRising = ratio > _fillRatio;
         _fillRatio = ratio;
         ApplyRatio(_fillImage, _fillRatio);
 
-        if (_delayRatio <= ratio || !isActiveAndEnabled)
+        // 체력이 오를 때는 줄어들던 지연 바도 바로 맞춘다. (페이즈 전환 충전처럼 매 프레임 오를 때 트윈을 다시 만들지 않는다)
+        if (isRising || _delayRatio <= ratio || !isActiveAndEnabled)
         {
             _drainTween?.Kill();
             SetDelayRatio(ratio);
