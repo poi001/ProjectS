@@ -159,6 +159,8 @@ public class Player : Character
         base.OnInitCompleted();
         Vital.Damaged += OnDamaged;
         Vital.Died += OnDied;
+        EventBus<CinematicStartedEvent>.Subscribe(OnCinematicStarted);
+        EventBus<CinematicEndedEvent>.Subscribe(OnCinematicEnded);
         _stateMachine.Initialize(IdleState);
     }
 
@@ -168,7 +170,21 @@ public class Player : Character
         _hitFeedbacks?.StopFeedbacks();
         Vital.Damaged -= OnDamaged;
         Vital.Died -= OnDied;
+        EventBus<CinematicStartedEvent>.Unsubscribe(OnCinematicStarted);
+        EventBus<CinematicEndedEvent>.Unsubscribe(OnCinematicEnded);
+        InputHandler.SetLocked(false);
         base.OnRelease();
+    }
+
+    // 시네마틱 동안에는 조작을 받지 않는다. 하던 동작은 입력이 끊긴 것처럼 자연스럽게 마무리된다. (달리던 중이면 멈추고, 공중이면 착지한다)
+    private void OnCinematicStarted(CinematicStartedEvent cinematicEvent)
+    {
+        InputHandler.SetLocked(true);
+    }
+
+    private void OnCinematicEnded(CinematicEndedEvent cinematicEvent)
+    {
+        InputHandler.SetLocked(false);
     }
 
     private void Update()
