@@ -65,8 +65,9 @@ public class SoulKnightPillarGimmick : MonoBehaviour
     }
 
     // 기믹을 시작한다. origin(보스 몸의 중심)에서 좌우 벽과 바닥을 찾아 기둥을 솟아오르게 한다.
+    // playerBody(플레이어의 몸 콜라이더)는 기둥이 솟는 자리에 서 있는 플레이어가 튕겨 오르지 않도록 기둥이 단단해질 때를 정하는 데 쓴다.
     // 벽이나 바닥을 찾지 못하면 기둥 없이 진행한다. (IsBusy가 false로 남는다)
-    public void Begin(Vector2 origin)
+    public void Begin(Vector2 origin, Collider2D playerBody)
     {
         // 이전 기둥이 아직 남아 있으면 바로 치우고 새로 시작한다.
         Clear();
@@ -108,7 +109,7 @@ public class SoulKnightPillarGimmick : MonoBehaviour
 
             SoulKnightPillar pillar = instance.GetComponent<SoulKnightPillar>();
             pillar.TargetHit += OnTargetHit;
-            pillar.Rise(centerX, _groundY, i == targetIndex, _riseDuration);
+            pillar.Rise(centerX, _groundY, i == targetIndex, _riseDuration, playerBody);
             _pillars.Add(pillar);
         }
 

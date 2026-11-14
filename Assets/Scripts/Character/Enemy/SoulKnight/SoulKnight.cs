@@ -830,7 +830,7 @@ public sealed class SoulKnight : Enemy
 
         if (_pillarGimmick != null)
         {
-            _pillarGimmick.Begin(Movement.Position);
+            _pillarGimmick.Begin(Movement.Position, Target != null ? Target.BodyCollider : null);
         }
     }
 

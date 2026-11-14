@@ -125,6 +125,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _height: 6.5
   _target: {fileID: 1463242100795622013}
+  _topCollider: {fileID: 7022523369002497458}
 --- !u!114 &4646651980219140870
 MonoBehaviour:
   m_ObjectHideFlags: 0
