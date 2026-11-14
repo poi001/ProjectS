@@ -50,6 +50,8 @@ public class PlayerWallSlideState : PlayerState
 
         if (owner.InputHandler.HasBufferedJump)
         {
+            // 지금 붙어 있는 벽을 기록해 두어, 벽 점프 후 같은 벽에 다시 붙지 못하게 한다.
+            owner.SetLastWallJumpedWall(owner.Movement.GetTouchingWall(_wallDirection));
             owner.WallJumpState.SetDirection(-_wallDirection);
             stateMachine.ChangeState(owner.WallJumpState);
             return;

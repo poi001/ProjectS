@@ -94,6 +94,7 @@ public abstract class PlayerState : State<Player>
 
     // 공중에서 벽 쪽으로 이동 키를 누르고 있고 그쪽 벽에 닿아 있으면 벽타기로 전환한다. 전환했다면 true를 반환한다.
     // 올라가는 중에는 붙지 않는다. (벽 옆에서 뛰어오르는 점프가 끊기지 않게 하고, 벽 점프 직후 같은 벽에 다시 붙지 않게 한다)
+    // 마지막으로 벽 점프한 벽에는 붙지 않는다. (같은 벽에서 벽 점프를 반복해 계속 오르지 못하게 한다)
     protected bool TryChangeToWallSlideState()
     {
         if (owner.Movement.IsGrounded || !IsMoving() || owner.Movement.Velocity.y > 0f)
@@ -102,8 +103,9 @@ public abstract class PlayerState : State<Player>
         }
 
         float direction = Mathf.Sign(GetMoveInput());
+        Collider2D wall = owner.Movement.GetTouchingWall(direction);
 
-        if (!owner.Movement.IsTouchingWall(direction))
+        if (wall == null || owner.IsLastWallJumpedWall(wall))
         {
             return false;
         }

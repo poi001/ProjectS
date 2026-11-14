@@ -137,11 +137,18 @@ public class CharacterMovement : MonoBehaviour
     // IsBlocked로 막혀 멈춘 자리에서도 true가 되도록 여유 거리(WallTouchMargin)를 더해 검사한다.
     public bool IsTouchingWall(float direction)
     {
+        return GetTouchingWall(direction) != null;
+    }
+
+    // 해당 방향(오른쪽 양수, 왼쪽 음수)으로 붙어 있는 벽의 콜라이더를 반환한다. 붙어 있지 않으면 null. (IsTouchingWall과 같은 기준)
+    // 어느 벽인지 구분해야 할 때 쓴다. (플레이어가 방금 벽 점프한 벽인지 확인하는 용도)
+    public Collider2D GetTouchingWall(float direction)
+    {
         Bounds bounds = _bodyCollider.bounds;
         Vector2 rayDirection = new Vector2(Mathf.Sign(direction), 0f);
         float rayDistance = bounds.extents.x + WallCheckSkin + WallTouchMargin;
         RaycastHit2D hit = Physics2D.Raycast(bounds.center, rayDirection, rayDistance, _wallLayerMask);
-        return hit.collider != null;
+        return hit.collider;
     }
 
     // 해당 방향(오른쪽 양수, 왼쪽 음수)이 지형(벽, 발판 옆면)에 막혀 있는지 확인한다.

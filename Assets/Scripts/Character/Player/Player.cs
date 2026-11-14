@@ -26,6 +26,8 @@ public class Player : Character
     [SerializeField] private float _wallSlideSpriteOffset = 0.3f;
     [Tooltip("벽 점프 시 벽 반대쪽으로 튀어 나가는 가로 속도입니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _wallJumpSpeedX = 7f;
+    [Tooltip("벽 점프의 높이 배율입니다. 1이면 땅에서 하는 점프와 같은 높이까지 오릅니다.")]
+    [SerializeField, Min(0f)] private float _wallJumpHeightRatio = 1f;
     [Tooltip("벽 점프 직후 좌우 입력을 무시하는 시간입니다. 튀어 나가자마자 같은 벽으로 되돌아가지 않게 합니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _wallJumpInputLockTime = 0.15f;
     [Tooltip("벽 점프 후 이 시간 동안은 방금 떠난 벽 쪽으로 이동 키를 눌러도 그쪽으로 움직이거나 벽에 다시 붙지 않습니다. 벽 쪽 키를 누른 채 점프해도 바로 벽에 되돌아가지 않게 합니다. 반대쪽 입력에는 영향이 없습니다. (단위: 초)")]
@@ -69,6 +71,8 @@ public class Player : Character
     // 벽 점프 직후 방금 떠난 벽 쪽 입력을 막는 시각과 그 벽의 방향 (오른쪽 1, 왼쪽 -1)
     private float _wallBlockEndTime = float.NegativeInfinity;
     private float _blockedWallDirection;
+    // 마지막으로 벽 점프한 벽. 이 벽에는 다시 벽타기를 할 수 없다. 땅에 닿으면 비우고, 다른 벽에서 벽 점프하면 그 벽으로 바뀐다.
+    private Collider2D _lastWallJumpedWall;
 
     public PlayerInputHandler InputHandler { get; private set; }
     public CharacterVital Vital { get; private set; }
@@ -82,6 +86,7 @@ public class Player : Character
     public float WallSlideSpeed => _wallSlideSpeed;
     public float WallSlideSpriteOffset => _wallSlideSpriteOffset;
     public float WallJumpSpeedX => _wallJumpSpeedX;
+    public float WallJumpHeightRatio => _wallJumpHeightRatio;
     public float WallJumpInputLockTime => _wallJumpInputLockTime;
     public float DashSpeed => _dashSpeed;
     public float DashDuration => _dashDuration;
@@ -194,10 +199,11 @@ public class Player : Character
             return;
         }
 
-        // 땅에 닿아 있는 동안 공중 점프와 공중 대시를 다시 채운다.
+        // 땅에 닿아 있는 동안 공중 점프와 공중 대시를 다시 채우고, 벽 점프한 벽 기록을 지운다.
         if (Movement.IsGrounded)
         {
             RefillAirActions();
+            _lastWallJumpedWall = null;
         }
 
         _stateMachine.LogicUpdate();
@@ -236,6 +242,18 @@ public class Player : Character
         }
 
         return moveInput;
+    }
+
+    // 벽 점프를 시작할 때 호출한다. 이 벽에는 땅에 닿거나 다른 벽에서 벽 점프하기 전까지 다시 벽타기를 할 수 없다.
+    public void SetLastWallJumpedWall(Collider2D wall)
+    {
+        _lastWallJumpedWall = wall;
+    }
+
+    // 마지막으로 벽 점프한 벽인지 확인한다. 기록이 없으면 false.
+    public bool IsLastWallJumpedWall(Collider2D wall)
+    {
+        return _lastWallJumpedWall != null && wall == _lastWallJumpedWall;
     }
 
     // 공중 대시만 다시 채운다. 벽을 타기 시작할 때 호출된다.

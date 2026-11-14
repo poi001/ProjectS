@@ -228,10 +228,11 @@ MonoBehaviour:
   _coyoteTime: 0.1
   _airJumpHeightRatio: 1
   _wallSlideSpeed: 2
-  _wallSlideSpriteOffset: 0.3
+  _wallSlideSpriteOffset: 0.15
   _wallJumpSpeedX: 7
   _wallJumpHeightRatio: 1
-  _wallJumpInputLockTime: 0.15
+  _wallJumpInputLockTime: 0.3
+  _wallJumpWallBlockTime: 0.5
   _dashSpeed: 15
   _dashDuration: 0.25
   _dashCooldown: 1
@@ -280,6 +281,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _hitSound: {fileID: 11400000, guid: aeeea958e7e91b94a9b389be12cadc67, type: 2}
   _muteWhenGaugeFull: {fileID: 0}
+  _nullifiedHitSound: {fileID: 0}
 --- !u!1 &3677017936851945411
 GameObject:
   m_ObjectHideFlags: 0
