@@ -73,6 +73,9 @@ public class Player : Character
     private float _blockedWallDirection;
     // 마지막으로 벽 점프한 벽. 이 벽에는 다시 벽타기를 할 수 없다. 땅에 닿으면 비우고, 다른 벽에서 벽 점프하면 그 벽으로 바뀐다.
     private Collider2D _lastWallJumpedWall;
+    // 입력을 잠그는 이유들. 하나라도 켜져 있으면 조작을 받지 않는다. (RefreshInputLock)
+    private bool _isCinematicPlaying;
+    private bool _isGamePaused;
 
     public PlayerInputHandler InputHandler { get; private set; }
     public CharacterVital Vital { get; private set; }
@@ -166,6 +169,10 @@ public class Player : Character
         Vital.Died += OnDied;
         EventBus<CinematicStartedEvent>.Subscribe(OnCinematicStarted);
         EventBus<CinematicEndedEvent>.Subscribe(OnCinematicEnded);
+        EventBus<GamePauseChangedEvent>.Subscribe(OnGamePauseChanged);
+        _isCinematicPlaying = false;
+        _isGamePaused = GameManager.HasInstance && GameManager.Instance.IsPaused;
+        RefreshInputLock();
         _stateMachine.Initialize(IdleState);
     }
 
@@ -177,6 +184,9 @@ public class Player : Character
         Vital.Died -= OnDied;
         EventBus<CinematicStartedEvent>.Unsubscribe(OnCinematicStarted);
         EventBus<CinematicEndedEvent>.Unsubscribe(OnCinematicEnded);
+        EventBus<GamePauseChangedEvent>.Unsubscribe(OnGamePauseChanged);
+        _isCinematicPlaying = false;
+        _isGamePaused = false;
         InputHandler.SetLocked(false);
         base.OnRelease();
     }
@@ -184,12 +194,27 @@ public class Player : Character
     // 시네마틱 동안에는 조작을 받지 않는다. 하던 동작은 입력이 끊긴 것처럼 자연스럽게 마무리된다. (달리던 중이면 멈추고, 공중이면 착지한다)
     private void OnCinematicStarted(CinematicStartedEvent cinematicEvent)
     {
-        InputHandler.SetLocked(true);
+        _isCinematicPlaying = true;
+        RefreshInputLock();
     }
 
     private void OnCinematicEnded(CinematicEndedEvent cinematicEvent)
     {
-        InputHandler.SetLocked(false);
+        _isCinematicPlaying = false;
+        RefreshInputLock();
+    }
+
+    // 일시정지(옵션 창 등) 동안에는 조작을 받지 않는다. 멈춘 동안 누른 키가 다시 진행될 때 뒤늦게 실행되지 않게 한다.
+    private void OnGamePauseChanged(GamePauseChangedEvent pauseEvent)
+    {
+        _isGamePaused = pauseEvent.IsPaused;
+        RefreshInputLock();
+    }
+
+    // 시네마틱과 일시정지가 겹칠 수 있으므로, 둘 중 하나라도 진행 중이면 입력을 잠근다.
+    private void RefreshInputLock()
+    {
+        InputHandler.SetLocked(_isCinematicPlaying || _isGamePaused);
     }
 
     private void Update()

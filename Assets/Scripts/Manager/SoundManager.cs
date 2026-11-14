@@ -123,7 +123,11 @@ public class SoundManager : PersistentSingleton<SoundManager>
         FadeOutCurrentBgm(fadeDuration);
     }
 
+    // 전체 음소거 여부. 음소거 중에도 채널별 볼륨 값은 유지된다.
+    public bool IsMuted => IsReady() && MMSoundManager.Current.IsMuted(MMSoundManager.MMSoundManagerTracks.Master);
+
     // volume: 0~1
+    // 전체 음소거 중에 Master 볼륨을 바꾸면 소리는 계속 끈 채로 두고, 음소거를 풀 때 그 값이 적용된다.
     public void SetVolume(SoundChannel channel, float volume)
     {
         if (!IsReady())
@@ -131,9 +135,20 @@ public class SoundManager : PersistentSingleton<SoundManager>
             return;
         }
 
-        MMSoundManager.Current.SetTrackVolume(ToTrack(channel), Mathf.Clamp01(volume));
+        volume = Mathf.Clamp01(volume);
+
+        if (channel == SoundChannel.Master && IsMuted)
+        {
+            // MMSoundManager는 음소거를 풀 때 MutedMasterVolume(믹서 단위, dB)으로 되돌린다.
+            MMSoundManagerSettingsSO settings = MMSoundManager.Current.settingsSo;
+            settings.Settings.MutedMasterVolume = settings.NormalizedToMixerVolume(Mathf.Max(volume, MMSoundManagerSettings._minimalVolume));
+            return;
+        }
+
+        MMSoundManager.Current.SetTrackVolume(ToTrack(channel), volume);
     }
 
+    // 전체 음소거 중이면 Master는 음소거를 풀었을 때 적용될 볼륨을 반환한다.
     public float GetVolume(SoundChannel channel)
     {
         if (!IsReady())
@@ -141,7 +156,31 @@ public class SoundManager : PersistentSingleton<SoundManager>
             return 0f;
         }
 
+        if (channel == SoundChannel.Master && IsMuted)
+        {
+            MMSoundManagerSettingsSO settings = MMSoundManager.Current.settingsSo;
+            return settings.MixerVolumeToNormalized(settings.Settings.MutedMasterVolume);
+        }
+
         return MMSoundManager.Current.GetTrackVolume(ToTrack(channel), false);
+    }
+
+    // 전체 사운드를 끄거나 켠다. 켜면 끄기 전(또는 끈 동안 바꾼) Master 볼륨으로 돌아온다.
+    public void SetMuted(bool isMuted)
+    {
+        if (!IsReady() || IsMuted == isMuted)
+        {
+            return;
+        }
+
+        if (isMuted)
+        {
+            MMSoundManager.Current.MuteMaster();
+        }
+        else
+        {
+            MMSoundManager.Current.UnmuteMaster();
+        }
     }
 
     private void PlayOneShot(SoundDataSO soundData, MMSoundManager.MMSoundManagerTracks track)
