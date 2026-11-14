@@ -8,6 +8,7 @@ using UnityEngine.UI;
 // 그 외에는 RectTransform의 anchorMax.x로 표현한다. (anchorMin.x = 0, 왼쪽에서 오른쪽으로 채움)
 // 게이지가 꽉 차면 바가 한 번 튕기고, 꽉 찬 동안 채움 색이 원래 색과 강조 색 사이를 오가며 깜빡인다. (DOTween, 게임 시간 기준)
 // 꽉 찬 상태가 끝나면(게이지 감소, 대상 교체, 비활성화) 원래 색과 크기로 돌아온다.
+// 보스가 게이지의 강조를 꺼 두면(PatternGauge.SetFullEmphasisEnabled) 꽉 차도 튕기거나 깜빡이지 않는다.
 public class PatternGaugeBar : MonoBehaviour
 {
     [Header("대상")]
@@ -121,9 +122,10 @@ public class PatternGaugeBar : MonoBehaviour
     }
 
     // 게이지가 꽉 찼는지에 맞춰 강조 연출을 켜거나 끈다. 상태가 그대로면 아무것도 하지 않는다.
+    // 게이지가 강조를 꺼 둔 경우(PatternGauge.ShowsFullEmphasis가 false)에는 꽉 차도 강조하지 않는다.
     private void RefreshFullEffect(bool shouldPlayPunch)
     {
-        if (!_target.IsFull)
+        if (!_target.IsFull || !_target.ShowsFullEmphasis)
         {
             StopFullEffect();
             return;

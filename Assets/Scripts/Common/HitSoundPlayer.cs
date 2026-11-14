@@ -15,6 +15,8 @@ public class HitSoundPlayer : MonoBehaviour
     [SerializeField] private SoundDataSO _nullifiedHitSound;
 
     private CharacterVital _vital;
+    // 게이지가 꽉 찬 동안 일반 피격음을 생략하는 규칙을 쓰는지. 기본은 켜져 있다.
+    private bool _isGaugeMuteEnabled = true;
 
     private void Awake()
     {
@@ -31,6 +33,13 @@ public class HitSoundPlayer : MonoBehaviour
     {
         _vital.Damaged -= OnDamaged;
         _vital.DamageNullified -= OnDamageNullified;
+    }
+
+    // 게이지가 꽉 찬 동안 일반 피격음을 생략하는 규칙을 켜거나 끈다.
+    // 게이지가 꽉 차도 기절하지 않는 경우(SoulKnight 2페이즈 등)에는 겹칠 기절음이 없으므로 꺼서 피격음이 계속 나게 한다.
+    public void SetGaugeMuteEnabled(bool isEnabled)
+    {
+        _isGaugeMuteEnabled = isEnabled;
     }
 
     private void OnDamageNullified(DamageInfo damageInfo)
@@ -50,7 +59,7 @@ public class HitSoundPlayer : MonoBehaviour
             return;
         }
 
-        if (_muteWhenGaugeFull != null && _muteWhenGaugeFull.IsFull)
+        if (_isGaugeMuteEnabled && _muteWhenGaugeFull != null && _muteWhenGaugeFull.IsFull)
         {
             return;
         }

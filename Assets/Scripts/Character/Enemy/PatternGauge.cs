@@ -15,14 +15,30 @@ public class PatternGauge : MonoBehaviour
     // 0이면 비어 있고 1이면 꽉 찬 상태
     public float Ratio => CurrentValue / _maxValue;
     public bool IsFull => CurrentValue >= _maxValue;
+    // 꽉 찼을 때 게이지 UI가 강조(튕김·깜빡임)를 보여 줄지. 꽉 찬 것이 "지금 때리면 기절"처럼 플레이어에게 알릴 일일 때만 켠다.
+    // 전투가 시작되면 켜져 있고, 보스가 필요할 때 SetFullEmphasisEnabled로 끈다. (예: SoulKnight 2페이즈)
+    public bool ShowsFullEmphasis { get; private set; } = true;
 
-    // 초기화·채움·줄임으로 값이 바뀔 때마다 호출된다. (게이지 UI용) 바뀐 값은 CurrentValue/Ratio로 읽는다.
+    // 초기화·채움·줄임으로 값이 바뀌거나 강조 표시 여부가 바뀔 때마다 호출된다. (게이지 UI용) 바뀐 값은 CurrentValue/Ratio로 읽는다.
     public event Action Changed;
 
-    // 전투 시작 시(Enemy.OnInit) 호출한다. 게이지를 비운다.
+    // 전투 시작 시(Enemy.OnInit) 호출한다. 게이지를 비우고 강조 표시를 다시 켠다.
     public void Initialize()
     {
         CurrentValue = 0f;
+        ShowsFullEmphasis = true;
+        Changed?.Invoke();
+    }
+
+    // 꽉 찼을 때의 UI 강조를 켜거나 끈다. 값이 그대로면 Changed를 호출하지 않는다.
+    public void SetFullEmphasisEnabled(bool isEnabled)
+    {
+        if (ShowsFullEmphasis == isEnabled)
+        {
+            return;
+        }
+
+        ShowsFullEmphasis = isEnabled;
         Changed?.Invoke();
     }
 
