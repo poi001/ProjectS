@@ -5,6 +5,8 @@ using UnityEngine;
 // 이 상태에 있는 동안은 시네마틱이다. 시작할 때 시네마틱을 열고(카메라 줌인, 위아래 검은 띠, 전투 UI 숨김, 플레이어 입력 잠금),
 // 나갈 때(체력 충전으로 넘어가거나 중간에 끊길 때) 닫는다. 체력 충전은 화면이 원래대로 돌아온 뒤에 보인다.
 // 체력이 소진된 상태(CharacterVital.IsDepleted)이므로 이 동안 피해를 입지 않는다.
+// 이 상태에 들어갈 때부터 몸에서 피를 흘리기 시작하며, 이후 2페이즈 내내 계속된다. (SoulKnight.PlayBleeding)
+// 1페이즈 각성 오라는 이 상태에 들어갈 때 사라진다. (SoulKnight.StopAwakenAura)
 // 지금은 애니메이션만 재생한다. 연출이 추가되면 이 상태에서 시작하고, 연출이 끝나는 시점에 StartPhaseRefill을 호출하도록 바꾼다.
 public class SoulKnightPhase1DownState : SoulKnightState
 {
@@ -20,6 +22,8 @@ public class SoulKnightPhase1DownState : SoulKnightState
         _enterTime = Time.time;
         boss.Movement.SetVelocityX(0f);
         boss.Animation.Play(SoulKnightAnimation.Phase1Down);
+        boss.StopAwakenAura();
+        boss.PlayBleeding();
         boss.BeginCinematic();
     }
 

@@ -12,7 +12,9 @@ using UnityEngine;
 // Idle 중 체력이 50% 이하이면 전투당 한 번 그 자리에서 5초 기도한다. (피해 무효, Enemy_GDD 6.8) 기도가 끝나면 Idle 뒤 기존 패턴을 이어간다.
 // 각성 후에는 위 두 묶음에 공격 4타(딜레이 → 1타 → 2타 → 찌르기 → 내려치기, 사거리 밖이면 딜레이 → 찌르기부터)를 더해 세 묶음 중 하나를 고른다. (Enemy_GDD 6.9)
 // 1페이즈의 체력을 모두 잃으면 죽지 않고 1페이즈 다운(쓰러짐, 시네마틱 5초) → 체력 충전 → 2페이즈로 넘어간다. (Enemy_GDD 1.1, 6.10)
-// 2페이즈 패턴은 아직 정해지지 않아 각성 후 패턴을 그대로 쓴다. Health·CrouchIdle은 모션 테스트로만 재생한다.
+// 1페이즈 다운(쓰러짐)부터 몸에서 계속 피를 흘리며, 2페이즈 내내 사망 상태에서도 이어진다. (출혈 효과)
+// 2페이즈 패턴은 각성 후 세 묶음에 회복(Health)을 더한 네 묶음이다. 회복은 모션이 끝나면 체력을 회복하고, 모션 중 피해를 입으면 그 순간 끊겨 Idle로 간다. (Enemy_GDD 6.12)
+// 2페이즈의 패턴 게이지는 시간으로 차고, 꽉 차면 기도로 이어진다. (Enemy_GDD 6.11) CrouchIdle은 모션 테스트로만 재생한다.
 // 수치는 기획에서 정해지지 않은 임시값이며 플레이하면서 인스펙터에서 조정한다.
 [RequireComponent(typeof(PatternGauge))]
 public sealed class SoulKnight : Enemy
@@ -25,6 +27,8 @@ public sealed class SoulKnight : Enemy
     private const float SameDistanceTolerance = 0.1f;
     // 각성 전에 피해로 내려갈 수 있는 최소 체력. 플레이어의 피해가 커도 기도에 들어가기 전에 죽지 않도록 1을 남긴다.
     private const float PreAwakeningMinHealth = 1f;
+    // 2페이즈 기도 기믹 동안 보스가 쓰는 레이어. Ground 말고는 어떤 레이어와도 충돌하지 않는다. (솟아오르는 기둥에 밀리지 않고 플레이어의 공격도 통과한다)
+    private const string GhostLayerName = "Ghost";
 
     private readonly Dictionary<SoulKnightMotion, SoulKnightMotionState> _states = new();
     private static readonly SoulKnightMotion[] _previewSequence =
@@ -41,6 +45,7 @@ public sealed class SoulKnight : Enemy
     [SerializeField, Min(0f)] private float _idleDuration = 1f;
 
     // 각성 후에는 세 묶음 중 하나를 가중치 비율로 고른다. 세 값이 같으면 각 1/3이다.
+    // 2페이즈에서는 회복(Health) 가중치가 더해져 네 묶음 중 하나를 고른다. 네 값이 같으면 각 25%다.
     [Header("패턴 선택 (각성 후)")]
     [Tooltip("각성 후 Idle이 끝났을 때 구르기→슬라이딩을 고르는 가중치입니다. 세 가중치의 비율로 확률이 정해집니다. (세 값이 같으면 각 1/3)\n0이면 고르지 않습니다.")]
     [SerializeField, Min(0f)] private float _awakenedRollWeight = 1f;
@@ -48,6 +53,8 @@ public sealed class SoulKnight : Enemy
     [SerializeField, Min(0f)] private float _awakenedJumpWeight = 1f;
     [Tooltip("각성 후 Idle이 끝났을 때 공격 4타를 고르는 가중치입니다. 세 가중치의 비율로 확률이 정해집니다.\n공격 사거리 안이면 1타부터, 밖이면 찌르기(3타)부터 시작합니다. 0이면 고르지 않습니다.")]
     [SerializeField, Min(0f)] private float _awakenedAttackWeight = 1f;
+    [Tooltip("2페이즈에서 Idle이 끝났을 때 회복(Health)을 고르는 가중치입니다. 위 세 가중치와 합친 네 값의 비율로 확률이 정해집니다. (네 값이 같으면 각 25%)\n1페이즈에서는 회복을 고르지 않습니다. 2페이즈라도 체력이 가득 차 있으면 회복을 빼고 나머지 셋 중에서 고릅니다. 0이면 고르지 않습니다.")]
+    [SerializeField, Min(0f)] private float _phase2HealthWeight = 1f;
 
     // 각성 후 공격 4타: Attack1 → Attack2 → Thrust(찌르기) → Smash(내려치기)를 딜레이 없이 잇는다. 사거리 밖이면 Thrust부터 시작한다.
     // Attack1·Attack2·Smash의 판정 시점은 각 클립에 넣은 애니메이션 이벤트(OnAttackHitFrame)가 정한다.
@@ -126,6 +133,18 @@ public sealed class SoulKnight : Enemy
     [Tooltip("슬라이딩 몸 충돌, 점프공격 충격, 공격 4타(1타·2타·찌르기·내려치기)가 플레이어에게 피해를 입힐 때마다 게이지가 줄어드는 양입니다. (최대값 100 기준이면 퍼센트)\nKnight와 같은 값입니다.")]
     [SerializeField, Min(0f)] private float _hitGaugeReduction = 20f;
 
+    [Header("회복 (2페이즈)")]
+    [Tooltip("회복(Health) 한 번에 회복하는 체력입니다. 최대 체력에 대한 비율이며, 회복 애니메이션이 끝나는 순간 회복합니다. (0.05 = 최대 체력의 5%)\n회복 모션 중에 피해를 입으면 맞는 순간 모션이 끊기고 바로 Idle로 가며, 체력은 오르지 않습니다.")]
+    [SerializeField, Range(0f, 1f)] private float _healHealthRatio = 0.05f;
+
+    // 2페이즈에서는 게이지 규칙이 바뀐다. 공격으로 차거나 적중으로 줄지 않고 시간에 따라서만 차며, 꽉 차면 기절 대신 기도로 이어진다.
+    // 기도하는 동안에는 차던 속도 그대로 게이지가 빠지고, 다 빠지면 기도가 끝난다.
+    [Header("2페이즈 패턴 게이지 (시간 충전)")]
+    [Tooltip("2페이즈에서 게이지가 1초마다 차는 양입니다. 한 번에 차지 않고 이 속도로 계속 조금씩 찹니다. (최대값 100 기준이면 1초당 퍼센트, 5면 20초에 꽉 참)\n꽉 차면 하던 패턴을 마치고 Idle이 된 순간 기도를 시작합니다. 기도하는 동안에는 같은 속도로 게이지가 빠지고(5면 20초), 0이 되면 기도를 끝내고 Idle로 돌아갑니다. 플레이어가 죽어 있는 동안에는 차지 않습니다.")]
+    [SerializeField, Min(0f)] private float _phase2GaugeFillPerSecond = 5f;
+    [Tooltip("2페이즈 기도에서 게이지가 빠지는 동안 멈춰 두는 Praying 애니메이션의 지점입니다. (0~1, 클립 전체가 1) 이 지점 직전의 기도 자세를 유지하다가, 게이지가 다 빠지기 직전에 나머지(일어나는 모습)를 재생합니다.\n현재 클립(5초)은 4.5초부터 일어나므로 0.9입니다. 클립을 고치면 함께 맞춥니다. 1페이즈 기도에는 쓰지 않습니다.")]
+    [SerializeField, Range(0f, 1f)] private float _phase2PrayingHoldProgress = 0.9f;
+
     [Header("기절")]
     [Tooltip("게이지가 꽉 찬 상태에서 플레이어에게 피해를 입어 기절했을 때 멈춰 있는 시간입니다. 이 시간 동안 게이지가 서서히 줄어 끝날 때 0이 됩니다. (단위: 초)\n기절 애니메이션(Death 클립)보다 길면 마지막 프레임을 유지합니다.")]
     [SerializeField, Min(0f)] private float _stunDuration = 3f;
@@ -146,11 +165,23 @@ public sealed class SoulKnight : Enemy
     [Tooltip("1페이즈의 체력을 모두 잃었을 때 쓰러져 있는 시간입니다. 이 동안 시네마틱(카메라 줌인, 위아래 검은 띠, 전투 UI 숨김, 플레이어 입력 잠금)이 진행됩니다. (단위: 초)\n시간이 지나면 화면이 원래대로 돌아오고 체력이 충전된 뒤 2페이즈가 시작됩니다. 쓰러진 애니메이션은 반복 재생됩니다.")]
     [SerializeField, Min(0f)] private float _phase1DownDuration = 5f;
 
+    [Header("출혈 연출 (1페이즈 다운부터)")]
+    [Tooltip("1페이즈 다운(쓰러짐)에 들어갈 때 재생하는 Feel 피드백입니다. 몸의 출혈 효과(Visuals/MirroredVFX/Bleed/Bleeding)를 켜고 0.2초 동안 서서히 나타나게 합니다. 초기화 방식은 Script로 둡니다.\n출혈은 한 번 시작하면 2페이즈 내내, 사망 상태에서도 계속 흐릅니다. 비워 두면 출혈 없이 진행합니다.")]
+    [SerializeField] private MMF_Player _bleedingFeedbacks;
+
     [Header("기도 연출")]
     [Tooltip("기도를 시작할 때 재생하는 Feel 피드백입니다. 발밑 룬(PrayingRune)을 켜고 0.2초 동안 서서히 나타나게 합니다. 초기화 방식은 Script로 둡니다.\n비워 두면 룬 없이 기도합니다.")]
     [SerializeField] private MMF_Player _prayingRuneFeedbacks;
     [Tooltip("기도가 끝날 때 재생하는 Feel 피드백입니다. 발밑 룬을 0.2초 동안 서서히 지운 뒤 끕니다. 초기화 방식은 Script로 둡니다.")]
     [SerializeField] private MMF_Player _prayingRuneEndFeedbacks;
+
+    [Header("각성 연출 (1페이즈 기도 끝 ~ 1페이즈 다운)")]
+    [Tooltip("1페이즈 기도가 끝날 때 재생하는 Feel 피드백입니다. 몸 주위의 보라색 오라(Visuals/MirroredVFX/Awaken/AwakenAura)를 켜고, 크게 터져 나왔다가 몸 가까이로 줄어들게 합니다. 초기화 방식은 Script로 둡니다.\n오라는 1페이즈가 끝날 때(1페이즈 다운)까지 계속 보입니다. 비워 두면 오라 없이 진행합니다.")]
+    [SerializeField] private MMF_Player _awakenAuraFeedbacks;
+    [Tooltip("1페이즈 다운(쓰러짐)에 들어갈 때 재생하는 Feel 피드백입니다. 오라를 0.2초 동안 서서히 지운 뒤 끕니다. 초기화 방식은 Script로 둡니다.")]
+    [SerializeField] private MMF_Player _awakenAuraEndFeedbacks;
+    [Tooltip("1페이즈 기도 애니메이션이 이 지점에 도달하면 오라를 시작합니다. (0~1, 클립 전체가 1)\n현재 클립(5초)은 4.75초에 완전히 일어선 모습(Pray_11)이 되므로 0.95입니다. 클립을 고치면 함께 맞춥니다.")]
+    [SerializeField, Range(0f, 1f)] private float _awakenAuraStartProgress = 0.95f;
 
     [Header("기도 (체력 50% 이하)")]
     [Tooltip("각성 전 Idle 중 현재 체력이 최대 체력의 이 비율 이하이면 각성하고 기도를 시작합니다. 각성은 전투당 한 번이라 기도도 한 번만 합니다.\n각성 전에는 체력이 1 아래로 내려가지 않으므로 큰 피해로 기도 전에 죽지 않습니다.\n0.5 = 체력 50% 이하")]
@@ -162,6 +193,18 @@ public sealed class SoulKnight : Enemy
     private int _previewIndex;
     private SoulKnightAnimation _soulKnightAnimation;
     private bool _isStunReadyEffectActive;
+    // 피격음 재생기. 2페이즈에서 게이지가 꽉 찬 동안에도 피격음이 나도록 규칙을 바꿀 때 쓴다. 없으면 null이다.
+    private HitSoundPlayer _hitSoundPlayer;
+    // 출혈 효과를 이미 시작했는지. 전투당 한 번만 시작한다.
+    private bool _isBleeding;
+    private bool _isAwakenAuraActive;
+    // 2페이즈 기도 기믹(기둥). 루트에 SoulKnightPillarGimmick이 없으면 null이며 기둥 없이 기도한다.
+    private SoulKnightPillarGimmick _pillarGimmick;
+    // Ghost 레이어로 바꿔 둔 상태인지와, 되돌릴 원래 레이어 (루트 몸 콜라이더, 피격 판정 콜라이더)
+    private bool _isGhost;
+    private int _ghostLayer;
+    private int _bodyLayer;
+    private int _hurtboxLayer;
     // 이 보스가 연 시네마틱이 진행 중인지
     private bool _isCinematicPlaying;
 
@@ -170,6 +213,8 @@ public sealed class SoulKnight : Enemy
     // 각성 전에는 피해로 체력이 1 아래로 내려가지 않고(PreAwakeningMinHealth), 각성한 뒤에는 제한이 없어진다.
     // 기도는 각성할 때 한 번만 하므로, 이후 회복 등으로 체력이 다시 50% 위로 올랐다 내려와도 다시 기도하지 않는다.
     public bool IsAwakened { get; private set; }
+    // 2페이즈부터는 패턴 게이지가 시간으로만 찬다. (공격으로 차거나 적중으로 줄지 않고, 꽉 차면 기절 대신 기도)
+    private bool UsesTimedGauge => CurrentPhase >= 2;
 
     public SoulKnightRollState RollState { get; private set; }
     public SoulKnightSlideState SlideState { get; private set; }
@@ -184,6 +229,7 @@ public sealed class SoulKnight : Enemy
     public SoulKnightAttack2State Attack2State { get; private set; }
     public SoulKnightThrustState ThrustState { get; private set; }
     public SoulKnightSmashState SmashState { get; private set; }
+    public SoulKnightHealthState HealthState { get; private set; }
 
     public float Phase1DownDuration => _phase1DownDuration;
     public float AttackStepSpeed => _attackStepSpeed;
@@ -197,6 +243,14 @@ public sealed class SoulKnight : Enemy
     public float ThrustDamage => Stats.AttackPower * _thrustDamageMultiplier;
 
     public float PatternGaugeGain => _patternGaugeGain;
+    public float Phase2GaugeFillPerSecond => _phase2GaugeFillPerSecond;
+    // 회복 한 번에 오르는 체력
+    public float HealAmount => Vital.MaxHealth * _healHealthRatio;
+    public float Phase2PrayingHoldProgress => _phase2PrayingHoldProgress;
+    public float AwakenAuraStartProgress => _awakenAuraStartProgress;
+    // 2페이즈 기도 기믹에서 플레이어가 기둥 위 목표물을 공격했는지
+    public bool IsPrayingGimmickCleared => _pillarGimmick != null && _pillarGimmick.IsCleared;
+    private bool IsPrayingGimmickBusy => _pillarGimmick != null && _pillarGimmick.IsBusy;
     public float StunDuration => _stunDuration;
     public GameObject StunVfxPrefab => _stunVfxPrefab;
 
@@ -235,6 +289,25 @@ public sealed class SoulKnight : Enemy
 
         _soulKnightAnimation = GetComponentInChildren<SoulKnightAnimation>();
         IsAwakened = false;
+        _hitSoundPlayer = TryGetComponent(out HitSoundPlayer hitSoundPlayer) ? hitSoundPlayer : null;
+
+        if (_hitSoundPlayer != null)
+        {
+            _hitSoundPlayer.SetGaugeMuteEnabled(true);
+        }
+        _isBleeding = false;
+        _isAwakenAuraActive = false;
+        _pillarGimmick = TryGetComponent(out SoulKnightPillarGimmick pillarGimmick) ? pillarGimmick : null;
+        _isGhost = false;
+        _ghostLayer = LayerMask.NameToLayer(GhostLayerName);
+        _bodyLayer = gameObject.layer;
+        _hurtboxLayer = Hurtbox != null ? Hurtbox.gameObject.layer : gameObject.layer;
+
+        if (_ghostLayer < 0)
+        {
+            Debug.LogError($"SoulKnight: '{GhostLayerName}' 레이어가 없습니다. 2페이즈 기도 중 기둥에 밀리거나 공격을 맞을 수 있습니다.", this);
+        }
+
         Vital.SetMinimumHealth(PreAwakeningMinHealth);
 
         if (PatternGauge == null)
@@ -283,6 +356,23 @@ public sealed class SoulKnight : Enemy
             _prayingRuneEndFeedbacks.Initialization();
         }
 
+        // 출혈 피드백도 초기화할 때 출혈 효과를 꺼 둔다.
+        if (_bleedingFeedbacks != null)
+        {
+            _bleedingFeedbacks.Initialization();
+        }
+
+        // 각성 오라 피드백도 초기화할 때 오라를 꺼 둔다.
+        if (_awakenAuraFeedbacks != null)
+        {
+            _awakenAuraFeedbacks.Initialization();
+        }
+
+        if (_awakenAuraEndFeedbacks != null)
+        {
+            _awakenAuraEndFeedbacks.Initialization();
+        }
+
         return true;
     }
 
@@ -302,6 +392,7 @@ public sealed class SoulKnight : Enemy
         Attack2State = new SoulKnightAttack2State(this, stateMachine);
         ThrustState = new SoulKnightThrustState(this, stateMachine);
         SmashState = new SoulKnightSmashState(this, stateMachine);
+        HealthState = new SoulKnightHealthState(this, stateMachine);
 
         _previewIndex = 0;
         _states.Clear();
@@ -339,6 +430,12 @@ public sealed class SoulKnight : Enemy
             return;
         }
 
+        // 2페이즈 기도 기믹의 기둥이 다 내려갈 때까지는 Idle로 기다린다. (벽을 찾아 움직이는 패턴이 기둥을 벽으로 잘못 보지 않게 한다)
+        if (_isGhost)
+        {
+            return;
+        }
+
         if (_autoPreview)
         {
             PlayMotion(_previewSequence[_previewIndex]);
@@ -363,9 +460,13 @@ public sealed class SoulKnight : Enemy
     }
 
     // 각성 후: 구르기→슬라이딩, 점프→점프공격, 공격 4타 중 하나를 가중치 비율로 고른다. 가중치가 모두 0이면 공격 4타를 고른다.
+    // 2페이즈에서는 여기에 회복(Health)이 더해져 넷 중 하나를 고른다. (가중치가 같으면 각 25%)
+    // 체력이 가득 차 있으면 회복할 것이 없으므로 회복을 빼고 나머지 셋 중에서 고른다.
     private void ChangeToAwakenedPattern()
     {
-        float totalWeight = _awakenedRollWeight + _awakenedJumpWeight + _awakenedAttackWeight;
+        bool canHeal = CurrentPhase >= 2 && Vital.CurrentHealth < Vital.MaxHealth;
+        float healthWeight = canHeal ? _phase2HealthWeight : 0f;
+        float totalWeight = _awakenedRollWeight + _awakenedJumpWeight + _awakenedAttackWeight + healthWeight;
 
         if (totalWeight <= 0f)
         {
@@ -382,6 +483,10 @@ public sealed class SoulKnight : Enemy
         else if (pick < _awakenedRollWeight + _awakenedJumpWeight)
         {
             stateMachine.ChangeState(JumpState);
+        }
+        else if (pick < _awakenedRollWeight + _awakenedJumpWeight + healthWeight)
+        {
+            stateMachine.ChangeState(HealthState);
         }
         else
         {
@@ -405,6 +510,29 @@ public sealed class SoulKnight : Enemy
         }
 
         StopPrayingRuneFeedbacks();
+        if (_bleedingFeedbacks != null)
+        {
+            _bleedingFeedbacks.StopFeedbacks();
+        }
+
+        // 2페이즈 기도 기믹 도중에 Release되면 기둥을 바로 치우고 레이어를 되돌린다.
+        if (_pillarGimmick != null)
+        {
+            _pillarGimmick.Clear();
+        }
+
+        SetGhost(false);
+
+        if (_awakenAuraFeedbacks != null)
+        {
+            _awakenAuraFeedbacks.StopFeedbacks();
+        }
+
+        if (_awakenAuraEndFeedbacks != null)
+        {
+            _awakenAuraEndFeedbacks.StopFeedbacks();
+        }
+
         // 시네마틱 도중에 Release되면 상태의 Exit이 호출되지 않으므로 여기서 닫는다. (플레이어 입력과 카메라가 잠긴 채 남지 않게 한다)
         EndCinematic();
         Vital.Damaged -= OnDamaged;
@@ -433,9 +561,27 @@ public sealed class SoulKnight : Enemy
     // 각성 전에 Idle 중 체력이 정해진 비율 이하로 내려와 있으면 각성하고 기도를 시작한다. 각성은 전투당 한 번이며, 모션 테스트 중에는 하지 않는다.
     // 패턴·기절 중에 체력이 내려가도 바로 끊지 않고, 그 패턴이 끝나 Idle로 돌아왔을 때 기도한다.
     // 그동안 체력은 PreAwakeningMinHealth(1) 아래로 내려가지 않아, 큰 피해로 기도 전에 죽지 않는다.
+    // 2페이즈에서는 체력과 관계없이, 시간으로 찬 패턴 게이지가 꽉 차 있으면 기도를 시작한다. 몇 번이든 반복한다.
+    // 게이지는 여기서 비우지 않는다. 기도 상태가 차던 속도로 조금씩 빼고, 다 빠지면 기도를 끝낸다.
     public override bool TryInterruptIdle()
     {
-        if (IsAwakened || _autoPreview || Vital.IsDead || Vital.CurrentHealth > Vital.MaxHealth * _prayingHealthRatio)
+        if (_autoPreview || Vital.IsDead)
+        {
+            return false;
+        }
+
+        if (UsesTimedGauge)
+        {
+            if (!PatternGauge.IsFull)
+            {
+                return false;
+            }
+
+            stateMachine.ChangeState(PrayingState);
+            return true;
+        }
+
+        if (IsAwakened || Vital.CurrentHealth > Vital.MaxHealth * _prayingHealthRatio)
         {
             return false;
         }
@@ -564,6 +710,60 @@ public sealed class SoulKnight : Enemy
         }
     }
 
+    // 출혈을 시작한다. 몸의 상처 3곳에서 피가 흐르는 효과를 0.2초 동안 서서히 나타나게 한다. (1페이즈 다운에 들어갈 때 호출)
+    // 한 번 시작하면 2페이즈 내내, 사망 상태에서도 끄지 않는다. 이미 나와 있으면 다시 시작하지 않는다.
+    public void PlayBleeding()
+    {
+        if (_bleedingFeedbacks == null || _isBleeding)
+        {
+            return;
+        }
+
+        _isBleeding = true;
+        _bleedingFeedbacks.PlayFeedbacks();
+    }
+
+    // 새 페이즈가 시작될 때: 2페이즈부터는 게이지가 꽉 차도 기절하지 않으므로, 꽉 찬 동안 피격음을 생략하던 규칙과
+    // 게이지 바의 꽉 참 강조(튕김·깜빡임)를 끈다. 둘 다 "지금 때리면 기절"을 알리는 표시라 2페이즈에는 맞지 않는다.
+    protected override void OnPhaseStarted(int phase)
+    {
+        if (phase < 2)
+        {
+            return;
+        }
+
+        PatternGauge.SetFullEmphasisEnabled(false);
+
+        if (_hitSoundPlayer != null)
+        {
+            _hitSoundPlayer.SetGaugeMuteEnabled(false);
+        }
+    }
+
+    // 2페이즈의 게이지 시간 충전. 매 프레임 조금씩 채운다. (한 번에 차지 않는다)
+    // 기도 중에는 차지 않고(기도 상태가 같은 속도로 뺀다), 플레이어가 죽어 있는 동안에도 차지 않는다. 사망했거나 페이즈 전환 중일 때도 마찬가지다.
+    // Enemy의 Update(상태기계 구동) 뒤에 실행되도록 LateUpdate를 쓴다. Enemy에 LateUpdate가 생기면 이 함수가 그것을 가리게 되므로 그때는 합쳐야 한다.
+    private void LateUpdate()
+    {
+        if (!IsInitialized)
+        {
+            return;
+        }
+
+        // 2페이즈 기도가 끝나고 기둥이 다 내려갔으면 Ghost 레이어를 원래 레이어로 되돌린다.
+        if (_isGhost && CurrentState != PrayingState && !IsPrayingGimmickBusy)
+        {
+            SetGhost(false);
+        }
+
+        if (!UsesTimedGauge || Vital.IsDead || IsPhaseTransitioning || IsTargetDead || CurrentState == PrayingState)
+        {
+            return;
+        }
+
+        PatternGauge.Add(_phase2GaugeFillPerSecond * Time.deltaTime);
+    }
+
     // 1페이즈의 체력을 모두 잃었을 때: 진행 중인 패턴을 끊고 1페이즈 다운 연출로 들어간다. 연출이 끝나면 그 상태가 StartPhaseRefill을 호출한다.
     protected override void OnPhaseHealthDepleted()
     {
@@ -623,6 +823,80 @@ public sealed class SoulKnight : Enemy
         }
     }
 
+    // 2페이즈 기도 기믹을 시작한다. 보스를 Ghost 레이어로 바꾸고 기둥을 솟아오르게 한다. (2페이즈 기도에 들어갈 때 호출)
+    public void BeginPrayingGimmick()
+    {
+        SetGhost(true);
+
+        if (_pillarGimmick != null)
+        {
+            _pillarGimmick.Begin(Movement.Position);
+        }
+    }
+
+    // 2페이즈 기도 기믹을 끝낸다. 기둥을 내려보낸다. (2페이즈 기도에서 나갈 때 호출)
+    // Ghost 레이어는 여기서 되돌리지 않고, 기둥이 다 내려간 뒤 LateUpdate에서 되돌린다. (내려가는 기둥에 몸이 밀리지 않게 한다)
+    public void EndPrayingGimmick()
+    {
+        if (_pillarGimmick != null)
+        {
+            _pillarGimmick.End();
+        }
+    }
+
+    // 보스의 몸 콜라이더(루트)와 피격 판정 콜라이더(자식 Collider)를 Ghost 레이어로 바꾸거나 원래 레이어로 되돌린다.
+    private void SetGhost(bool isGhost)
+    {
+        if (_isGhost == isGhost || _ghostLayer < 0)
+        {
+            return;
+        }
+
+        _isGhost = isGhost;
+        gameObject.layer = isGhost ? _ghostLayer : _bodyLayer;
+
+        if (Hurtbox != null)
+        {
+            Hurtbox.gameObject.layer = isGhost ? _ghostLayer : _hurtboxLayer;
+        }
+    }
+
+    // 각성 오라를 시작한다. 1페이즈 기도가 끝날 때(일어서는 순간) 몸 주위로 보라색 기운이 터져 나왔다가 일렁이는 오라로 남는다.
+    // 1페이즈 다운까지 계속 보이며, 이미 나와 있으면 다시 시작하지 않는다.
+    public void PlayAwakenAura()
+    {
+        if (_awakenAuraFeedbacks == null || _isAwakenAuraActive)
+        {
+            return;
+        }
+
+        _isAwakenAuraActive = true;
+
+        if (_awakenAuraEndFeedbacks != null)
+        {
+            _awakenAuraEndFeedbacks.StopFeedbacks();
+        }
+
+        _awakenAuraFeedbacks.PlayFeedbacks();
+    }
+
+    // 각성 오라를 서서히 지운 뒤 끈다. (1페이즈 다운에 들어갈 때 호출) 나와 있지 않으면 아무것도 하지 않는다.
+    public void StopAwakenAura()
+    {
+        if (!_isAwakenAuraActive)
+        {
+            return;
+        }
+
+        _isAwakenAuraActive = false;
+        _awakenAuraFeedbacks.StopFeedbacks();
+
+        if (_awakenAuraEndFeedbacks != null)
+        {
+            _awakenAuraEndFeedbacks.PlayFeedbacks();
+        }
+    }
+
     private void StopPrayingRuneFeedbacks()
     {
         if (_prayingRuneFeedbacks != null)
@@ -647,10 +921,21 @@ public sealed class SoulKnight : Enemy
         SoundManager.Instance.PlaySfx(_stunSound);
     }
 
-    // 슬라이딩 몸 충돌, 점프공격 충격이 플레이어를 맞혔을 때 호출한다. 맞힌 수만큼 게이지를 줄인다.
+    // 공격(슬라이딩, 점프공격, 공격 4타)을 시작할 때 게이지를 채운다. 2페이즈에서는 시간으로만 차므로 채우지 않는다.
+    public void AddPatternGaugeByAttack(float amount)
+    {
+        if (UsesTimedGauge)
+        {
+            return;
+        }
+
+        PatternGauge.Add(amount);
+    }
+
+    // 슬라이딩 몸 충돌, 점프공격 충격, 공격 4타가 플레이어를 맞혔을 때 호출한다. 맞힌 수만큼 게이지를 줄인다. 2페이즈에서는 줄이지 않는다.
     public void ReducePatternGaugeByHits(int hitCount)
     {
-        if (hitCount <= 0)
+        if (hitCount <= 0 || UsesTimedGauge)
         {
             return;
         }
@@ -658,10 +943,10 @@ public sealed class SoulKnight : Enemy
         PatternGauge.Reduce(_hitGaugeReduction * hitCount);
     }
 
-    // 실제로 다음 피격에 기절할 수 있는 동안만 표시한다. 기절 진입 시에는 게이지가 아직 꽉 차 있어도 끈다.
+    // 실제로 다음 피격에 기절할 수 있는 동안만 표시한다. 기절 진입 시에는 게이지가 아직 꽉 차 있어도 끈다. 2페이즈에는 기절이 없으므로 표시하지 않는다.
     public void RefreshStunReadyEffect()
     {
-        bool isReady = IsInitialized && !Vital.IsDead && !IsTargetDead && PatternGauge.IsFull
+        bool isReady = IsInitialized && !UsesTimedGauge && !Vital.IsDead && !IsTargetDead && PatternGauge.IsFull
             && CurrentState != StunState && CurrentState != StunRecoverState && CurrentState != PrayingState;
         SetStunReadyEffect(isReady);
     }
@@ -685,8 +970,15 @@ public sealed class SoulKnight : Enemy
     // 게이지가 꽉 찬 상태에서 플레이어에게 피해를 입으면 진행 중인 패턴을 끊고 즉시 기절한다.
     private void OnDamaged(DamageInfo damageInfo)
     {
-        // 치명 피해는 사망을 우선하며, 기절 중 추가 피격으로 기절 시간을 초기화하지 않는다.
-        if (Vital.IsDead || !PatternGauge.IsFull || CurrentState == StunState || CurrentState == StunRecoverState)
+        // 회복 모션 중에 피해를 입으면 회복을 끊는다. 맞는 순간 모션을 멈추고 바로 Idle로 쉬어가며 체력은 오르지 않는다.
+        // 치명 피해라면 바로 뒤에 이어지는 사망 처리에 맡긴다.
+        if (CurrentState == HealthState && !Vital.IsDead)
+        {
+            ChangeToRest();
+        }
+
+        // 치명 피해는 사망을 우선하며, 기절 중 추가 피격으로 기절 시간을 초기화하지 않는다. 2페이즈에는 기절이 없다. (게이지가 꽉 차면 기도로 이어진다)
+        if (UsesTimedGauge || Vital.IsDead || !PatternGauge.IsFull || CurrentState == StunState || CurrentState == StunRecoverState)
         {
             return;
         }

@@ -26,7 +26,7 @@ public abstract class SoulKnightSwingStateBase : SoulKnightState
 
     public override void Enter()
     {
-        boss.PatternGauge.Add(boss.AttackGaugeGain);
+        boss.AddPatternGaugeByAttack(boss.AttackGaugeGain);
 
         if (FacesTargetOnEnter && !boss.IsTargetDead)
         {

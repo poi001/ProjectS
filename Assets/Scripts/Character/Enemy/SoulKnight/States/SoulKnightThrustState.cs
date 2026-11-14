@@ -21,7 +21,7 @@ public class SoulKnightThrustState : SoulKnightState
 
     public override void Enter()
     {
-        boss.PatternGauge.Add(boss.AttackGaugeGain);
+        boss.AddPatternGaugeByAttack(boss.AttackGaugeGain);
 
         if (!boss.IsTargetDead)
         {

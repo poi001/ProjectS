@@ -37,6 +37,8 @@ public sealed class SoulKnightAnimation : EnemyAnimation
     // 1페이즈 다운. 1페이즈의 체력을 모두 잃었을 때 쓰러져 있는 모습이다. crouch_idle 시트를 반복하는 클립(SoulKnight_Phase1Down)이며,
     // 쓰러져 있는 시간은 클립이 아니라 SoulKnight의 Phase 1 Down Duration이 정한다.
     public static readonly int Phase1Down = Animator.StringToHash("Phase1Down");
+    // 회복. 반복하지 않는 0.8초 클립이며, 이 클립이 끝나는 순간 체력을 회복한다. (SoulKnightHealthState)
+    public static readonly int Health = Animator.StringToHash("Health");
     // 기도. 반복하지 않는 5초 클립이며, 이 클립이 끝나는 시점이 기도가 끝나는 시점이다. (SoulKnightPrayingState)
     public static readonly int Praying = Animator.StringToHash("Praying");
 

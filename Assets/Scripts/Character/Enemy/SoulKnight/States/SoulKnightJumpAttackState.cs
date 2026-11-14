@@ -22,7 +22,7 @@ public class SoulKnightJumpAttackState : SoulKnightState
 
     public override void Enter()
     {
-        boss.PatternGauge.Add(boss.PatternGaugeGain);
+        boss.AddPatternGaugeByAttack(boss.PatternGaugeGain);
         _enterTime = Time.time;
         _isLanding = false;
 

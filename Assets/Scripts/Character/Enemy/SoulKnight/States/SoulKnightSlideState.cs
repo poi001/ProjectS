@@ -48,7 +48,7 @@ public class SoulKnightSlideState : SoulKnightState
 
     public override void Enter()
     {
-        boss.PatternGauge.Add(boss.PatternGaugeGain);
+        boss.AddPatternGaugeByAttack(boss.PatternGaugeGain);
         _phase = Phase.Sliding;
         _phaseStartTime = Time.time;
         _hasBounceTarget = boss.TryGetMapCenterX(out _bounceTargetX);
