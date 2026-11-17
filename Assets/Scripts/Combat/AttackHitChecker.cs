@@ -21,6 +21,8 @@ public class AttackHitChecker
     // 마지막으로 판정이 나간 범위와 시각. 디버그로 범위를 보여 줄 때만 쓴다.
     public Vector2 LastHitCenter { get; private set; }
     public Vector2 LastHitSize { get; private set; }
+    // 마지막 판정 범위의 회전 각도 (단위: 도, 반시계 방향). 회전 없는 범위는 0이다.
+    public float LastHitAngle { get; private set; }
     public float LastHitTime { get; private set; } = float.NegativeInfinity;
 
     public AttackHitChecker(Character owner, LayerMask targetLayers)
@@ -45,11 +47,19 @@ public class AttackHitChecker
     public int Hit(HitboxShape hitbox, float damage, float facingDirection)
     {
         Vector2 center = hitbox.GetCenter(_ownerTransform.position, facingDirection);
+        return Hit(center, hitbox.Size, 0f, damage);
+    }
+
+    // 월드 좌표의 중심·크기와 회전 각도로 정한 박스 범위에 판정을 낸다. 비스듬히 뻗는 범위(화염 등)에 쓴다.
+    // angle: 박스의 회전 각도 (단위: 도, 반시계 방향). 크기의 x가 회전한 박스의 긴 쪽 방향이다.
+    public int Hit(Vector2 center, Vector2 size, float angle, float damage)
+    {
         LastHitCenter = center;
-        LastHitSize = hitbox.Size;
+        LastHitSize = size;
+        LastHitAngle = angle;
         LastHitTime = Time.time;
 
-        int overlapCount = Physics2D.OverlapBox(center, hitbox.Size, 0f, _contactFilter, _overlapResults);
+        int overlapCount = Physics2D.OverlapBox(center, size, angle, _contactFilter, _overlapResults);
         int hitCount = 0;
 
         for (int i = 0; i < overlapCount; i++)

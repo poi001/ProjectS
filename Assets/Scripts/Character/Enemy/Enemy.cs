@@ -164,6 +164,7 @@ public abstract class Enemy : Character
             return;
         }
 
+        OnUpdate();
         stateMachine.LogicUpdate();
     }
 
@@ -265,6 +266,12 @@ public abstract class Enemy : Character
     {
         StartPhaseRefill();
         Animation.Play(EnemyAnimation.Idle);
+    }
+
+    // 매 프레임 상태 로직(LogicUpdate) 전에 호출된다. 상태와 상관없이 매 프레임 할 일(시간에 따라 차는 패턴 게이지 등)이 있는 보스만 오버라이드한다.
+    // 사망·페이즈 전환 중에도 호출되므로 필요하면 보스 쪽에서 확인한다.
+    protected virtual void OnUpdate()
+    {
     }
 
     // 새 페이즈가 시작될 때 호출된다. (체력 충전이 끝난 직후, Idle로 가기 전) phase는 새 페이즈 번호(2부터)다.

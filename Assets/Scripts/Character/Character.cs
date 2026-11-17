@@ -152,6 +152,19 @@ public abstract class Character : MonoBehaviour, ICharacterLifecycle
 #endif
     }
 
+    // 회전한 판정 범위 하나를 붉은 선으로 그린다. 비스듬히 뻗는 범위(화염 등)에 쓴다. center는 월드 좌표, angle은 도 단위(반시계 방향)다.
+    protected void DrawHitboxGizmo(Vector2 center, Vector2 size, float angle, string label)
+    {
+        Gizmos.color = Color.red;
+        Gizmos.matrix = Matrix4x4.TRS(center, Quaternion.Euler(0f, 0f, angle), Vector3.one);
+        Gizmos.DrawWireCube(Vector3.zero, size);
+        Gizmos.matrix = Matrix4x4.identity;
+
+#if UNITY_EDITOR
+        UnityEditor.Handles.Label(center, label);
+#endif
+    }
+
     // 디버그 표시를 켠 경우, 판정이 나간 범위를 일정 시간 동안 선택하지 않아도 그린다.
     private void OnDrawGizmos()
     {
@@ -160,10 +173,12 @@ public abstract class Character : MonoBehaviour, ICharacterLifecycle
             return;
         }
 
+        Gizmos.matrix = Matrix4x4.TRS(HitChecker.LastHitCenter, Quaternion.Euler(0f, 0f, HitChecker.LastHitAngle), Vector3.one);
         Gizmos.color = new Color(1f, 0f, 0f, 0.25f);
-        Gizmos.DrawCube(HitChecker.LastHitCenter, HitChecker.LastHitSize);
+        Gizmos.DrawCube(Vector3.zero, HitChecker.LastHitSize);
         Gizmos.color = Color.red;
-        Gizmos.DrawWireCube(HitChecker.LastHitCenter, HitChecker.LastHitSize);
+        Gizmos.DrawWireCube(Vector3.zero, HitChecker.LastHitSize);
+        Gizmos.matrix = Matrix4x4.identity;
     }
 
     // 선택했을 때 모든 공격의 판정 범위를 그린다. 플레이 중에는 지금 보는 방향, 편집 중에는 오른쪽 기준이다.
