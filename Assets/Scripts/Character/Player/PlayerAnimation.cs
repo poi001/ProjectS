@@ -21,6 +21,12 @@ public class PlayerAnimation : CharacterAnimation
     [Tooltip("벽타기 중 손의 먼지를 표시하는 Feel 피드백입니다. Play에서 먼지 오브젝트를 켜고 Stop에서 끄도록 구성합니다. 초기화 방식은 Script로 둡니다.")]
     [SerializeField] private MMF_Player _wallSlideFeedbacks;
 
+    [Header("대시 연출")]
+    [Tooltip("대시를 시작할 때 몸 뒤의 속도선을 켜는 피드백입니다. Visuals/Dash/DashLines_Enter의 MMF_Player를 연결합니다. 초기화 방식은 Script로 두며, 초기화할 때 속도선을 꺼 둡니다.\n비워 두면 속도선이 나오지 않습니다.")]
+    [SerializeField] private MMF_Player _dashLinesEnter;
+    [Tooltip("대시가 끝나거나 중간에 끊길 때 속도선을 끄는 피드백입니다. Visuals/Dash/DashLines_Exit의 MMF_Player를 연결합니다.")]
+    [SerializeField] private MMF_Player _dashLinesExit;
+
     private int[] _comboHashes = new int[0];
     private int[] _comboEndHashes = new int[0];
 
@@ -31,6 +37,32 @@ public class PlayerAnimation : CharacterAnimation
         if (_wallSlideFeedbacks != null)
         {
             _wallSlideFeedbacks.Initialization();
+        }
+
+        if (_dashLinesEnter != null)
+        {
+            _dashLinesEnter.Initialization();
+        }
+
+        if (_dashLinesExit != null)
+        {
+            _dashLinesExit.Initialization();
+        }
+    }
+
+    public void PlayDashLines()
+    {
+        if (_dashLinesEnter != null)
+        {
+            _dashLinesEnter.PlayFeedbacks();
+        }
+    }
+
+    public void StopDashLines()
+    {
+        if (_dashLinesExit != null)
+        {
+            _dashLinesExit.PlayFeedbacks();
         }
     }
 

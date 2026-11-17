@@ -179,6 +179,7 @@ public class Player : Character
     protected override void OnRelease()
     {
         Animation.StopWallSlideDust();
+        Animation.StopDashLines();
         _hitFeedbacks?.StopFeedbacks();
         Vital.Damaged -= OnDamaged;
         Vital.Died -= OnDied;

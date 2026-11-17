@@ -4,6 +4,7 @@ using UnityEngine;
 // 방향은 상태에 들어가기 전에 SetDirection으로 정하고, 그 방향을 바라본다. (PlayerState.TryChangeToDashState가 이동 입력 또는 바라보는 방향으로 정한다)
 // 대시하는 동안에는 피격 판정 콜라이더를 꺼서 적의 공격 판정 조회 자체에 걸리지 않는다.
 // 공중에서 시작하면 공중 대시를 소모하고, 끝나면 대시 쿨타임이 시작된다.
+// 연출: 대시하는 동안 몸 뒤로 속도선(SkullDog 돌진과 같은 haste-lines)을 보여 준다. (PlayerAnimation.PlayDashLines / StopDashLines)
 // 대시 중에는 다른 입력을 받지 않으며, 끝나면 Fall 또는 Idle/Run(점프·공격 입력이 있으면 그 동작)으로 전환한다.
 public class PlayerDashState : PlayerState
 {
@@ -31,11 +32,13 @@ public class PlayerDashState : PlayerState
         owner.Movement.SetVelocity(GetDashVelocity());
         owner.SetHurtboxEnabled(false);
         owner.Animation.Play(PlayerAnimation.Dash);
+        owner.Animation.PlayDashLines();
         _endTime = Time.time + owner.DashDuration;
     }
 
     public override void Exit()
     {
+        owner.Animation.StopDashLines();
         owner.Movement.SetGravityEnabled(true);
         owner.SetHurtboxEnabled(true);
         owner.StartDashCooldown();
