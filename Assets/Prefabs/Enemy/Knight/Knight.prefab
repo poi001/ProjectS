@@ -646,7 +646,7 @@ Transform:
   m_GameObject: {fileID: 3897121813065739565}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.0083333, z: 0}
+  m_LocalPosition: {x: 0, y: 0.01, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -890,6 +890,8 @@ MonoBehaviour:
   _stats: {fileID: 11400000, guid: 76a4cac2c3132d54eb775e93cd0a0a8b, type: 2}
   _isBoss: 1
   _startIdleDuration: 1
+  _nextPhaseMaxHealths: []
+  _phaseRefillDuration: 1.5
   _attackRange: 3
   _comboChance: 0.5
   _wallClimbChance: 0.5
