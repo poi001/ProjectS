@@ -1,4 +1,5 @@
-using System.Collections;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using MoreMountains.Feedbacks;
 using UnityEngine;
 
@@ -43,7 +44,7 @@ public class SpritePropertyFloatFeedback : MMF_Feedback
 
     private int _propertyId;
     private MaterialPropertyBlock _properties;
-    private Coroutine _coroutine;
+    private CancellationTokenSource _cancellation;
 
     protected override void CustomInitialization(MMF_Player owner)
     {
@@ -67,7 +68,8 @@ public class SpritePropertyFloatFeedback : MMF_Feedback
             return;
         }
 
-        _coroutine = Owner.StartCoroutine(Interpolate());
+        _cancellation = CancellationTokenSource.CreateLinkedTokenSource(Owner.destroyCancellationToken);
+        InterpolateAsync(_cancellation.Token).Forget();
     }
 
     protected override void CustomStopFeedback(Vector3 position, float feedbacksIntensity = 1f)
@@ -75,7 +77,7 @@ public class SpritePropertyFloatFeedback : MMF_Feedback
         StopInterpolation();
     }
 
-    private IEnumerator Interpolate()
+    private async UniTaskVoid InterpolateAsync(CancellationToken cancellationToken)
     {
         IsPlaying = true;
         float duration = FeedbackDuration;
@@ -84,25 +86,31 @@ public class SpritePropertyFloatFeedback : MMF_Feedback
         while (elapsed < duration)
         {
             SetValue(Mathf.LerpUnclamped(FromValue, ToValue, Curve.Evaluate(elapsed / duration)));
-            yield return null;
+            await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
             elapsed += FeedbackDeltaTime;
         }
 
         SetValue(Mathf.LerpUnclamped(FromValue, ToValue, Curve.Evaluate(1f)));
-        _coroutine = null;
+        ReleaseCancellation();
         IsPlaying = false;
     }
 
     private void StopInterpolation()
     {
-        if (_coroutine == null)
+        if (_cancellation == null)
         {
             return;
         }
 
-        Owner.StopCoroutine(_coroutine);
-        _coroutine = null;
+        _cancellation.Cancel();
+        ReleaseCancellation();
         IsPlaying = false;
+    }
+
+    private void ReleaseCancellation()
+    {
+        _cancellation.Dispose();
+        _cancellation = null;
     }
 
     private void SetValue(float value)
