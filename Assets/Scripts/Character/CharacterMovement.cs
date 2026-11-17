@@ -151,6 +151,32 @@ public class CharacterMovement : MonoBehaviour
         return hit.collider;
     }
 
+    // 해당 방향(오른쪽 양수, 왼쪽 음수)의 벽에 콜라이더가 맞닿도록 옮긴다. (벽에 붙는 동작용)
+    // 벽 감지는 여유 거리 안이면 붙은 것으로 보므로, 그 사이 틈을 메워 벽과 떨어져 보이지 않게 한다. 벽이 감지 거리 밖이면 옮기지 않는다.
+    public void SnapToWall(float direction)
+    {
+        Bounds bounds = _bodyCollider.bounds;
+        float sign = Mathf.Sign(direction);
+        float rayDistance = bounds.extents.x + WallCheckSkin + WallTouchMargin;
+        RaycastHit2D hit = Physics2D.Raycast(bounds.center, new Vector2(sign, 0f), rayDistance, _wallLayerMask);
+
+        if (hit.collider == null)
+        {
+            return;
+        }
+
+        float gap = hit.distance - bounds.extents.x - Physics2D.defaultContactOffset;
+
+        if (gap <= 0f)
+        {
+            return;
+        }
+
+        Vector2 position = _rigidbody.position;
+        position.x += sign * gap;
+        _rigidbody.position = position;
+    }
+
     // 해당 방향(오른쪽 양수, 왼쪽 음수)이 지형(벽, 발판 옆면)에 막혀 있는지 확인한다.
     public bool IsBlocked(float direction)
     {

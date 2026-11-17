@@ -22,8 +22,8 @@ public class Player : Character
     [Header("벽타기")]
     [Tooltip("벽을 타는 동안 미끄러져 내려가는 속도입니다. 0이면 벽에 붙은 채 멈춥니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _wallSlideSpeed = 2f;
-    [Tooltip("벽을 타는 동안 그림을 벽 쪽으로 옮기는 거리입니다. 벽타기 스프라이트는 그림이 칸 가운데에서 벗어나 있어 그대로 두면 벽에서 떠 보입니다. 늘리면 벽에 더 붙고, 0이면 옮기지 않습니다. (단위: 월드 거리)")]
-    [SerializeField] private float _wallSlideSpriteOffset = 0.3f;
+    [Tooltip("벽을 타는 동안 그림을 벽 쪽으로 옮기는 거리입니다. 벽타기 스프라이트는 그림이 칸 가운데에서 벗어나 있어 그대로 두면 벽에서 떠 보입니다. 늘리면 벽에 더 붙고, 0이면 옮기지 않습니다. 0.33이면 그림의 벽 쪽 끝이 몸 콜라이더 끝과 맞습니다. (단위: 월드 거리)")]
+    [SerializeField] private float _wallSlideSpriteOffset = 0.33f;
     [Tooltip("벽 점프 시 벽 반대쪽으로 튀어 나가는 가로 속도입니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _wallJumpSpeedX = 7f;
     [Tooltip("벽 점프의 높이 배율입니다. 1이면 땅에서 하는 점프와 같은 높이까지 오릅니다.")]

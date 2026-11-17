@@ -228,7 +228,7 @@ MonoBehaviour:
   _coyoteTime: 0.1
   _airJumpHeightRatio: 1
   _wallSlideSpeed: 2
-  _wallSlideSpriteOffset: 0.15
+  _wallSlideSpriteOffset: 0.33
   _wallJumpSpeedX: 7
   _wallJumpHeightRatio: 1
   _wallJumpInputLockTime: 0.3

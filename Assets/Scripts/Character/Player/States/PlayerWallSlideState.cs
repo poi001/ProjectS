@@ -24,6 +24,8 @@ public class PlayerWallSlideState : PlayerState
     public override void Enter()
     {
         owner.RefillAirDash();
+        // 벽과 조금 떨어진 채로 붙었을 수 있으므로 몸을 벽에 맞닿게 옮긴다.
+        owner.Movement.SnapToWall(_wallDirection);
         owner.Animation.UpdateFacing(-_wallDirection);
         // 미끄러지는 속도를 일정하게 유지하도록 중력을 끈다. (켜 두면 매 물리 스텝 중력만큼 더 빨라진다)
         owner.Movement.SetGravityEnabled(false);
