@@ -115,6 +115,12 @@ public sealed class SoulKnight : Enemy
     [SerializeField] private HitboxShape _jumpAttackImpactHitbox = new HitboxShape(new Vector2(0f, -0.5f), new Vector2(4.6f, 1.5f));
     [Tooltip("켜면 SoulKnight를 선택했을 때 Scene 뷰(프리팹 편집 화면 포함)에 점프공격 충격 범위를 붉은 박스로 보여 줍니다. 끄면 이 공격의 박스만 숨깁니다.\n에디터 표시만 바꾸며 게임 동작에는 영향이 없습니다.")]
     [SerializeField] private bool _showJumpAttackHitbox = true;
+    [Tooltip("점프공격으로 내려찍는 동안 몸에 닿은 플레이어가 입는 피해량 배율입니다. 실제 피해 = SoulKnight 공격력 × 이 값입니다. 1 = 공격력 그대로 (착지 충격과 같음)")]
+    [SerializeField, Min(0f)] private float _jumpAttackBodyDamageMultiplier = 1f;
+    [Tooltip("점프공격으로 내려찍는 동안 플레이어가 몸에 닿았는지 확인하는 판정 범위입니다. SoulKnight 몸 콜라이더와 같은 크기(1.8 × 2.5, 몸 중심)로 둡니다.\n한 번의 점프공격에서 한 번만 맞으며, 몸에 맞은 플레이어는 피격 무적 때문에 이어지는 착지 충격에는 맞지 않습니다.")]
+    [SerializeField] private HitboxShape _jumpAttackBodyHitbox = new HitboxShape(Vector2.zero, new Vector2(1.8f, 2.5f));
+    [Tooltip("켜면 SoulKnight를 선택했을 때 Scene 뷰(프리팹 편집 화면 포함)에 점프공격 몸 충돌 범위를 붉은 박스로 보여 줍니다. 끄면 이 박스만 숨깁니다.\n에디터 표시만 바꾸며 게임 동작에는 영향이 없습니다.")]
+    [SerializeField] private bool _showJumpAttackBodyHitbox = true;
     [Tooltip("JumpAttack 클립에서 착지 모습이 시작되는 지점입니다. 이 지점 직전의 낙하 모습에서 멈춘 채 떨어지고, 바닥에 닿으면 이 지점부터 재생합니다. (애니메이션 진행도 0~1)\n현재 클립은 8프레임 중 4번째 프레임부터 착지이므로 0.375입니다.")]
     [SerializeField, Range(0f, 1f)] private float _jumpAttackLandProgress = 0.375f;
     [Tooltip("JumpAttack 클립의 착지 모습이 끝나는 지점입니다. 여기에 도달하면 Idle로 갑니다. (애니메이션 진행도 0~1)\n현재 클립의 마지막(8번째) 프레임은 빈 그림이라 그 앞에서 끝나도록 0.875로 둡니다. 클립을 고치면 1로 바꿉니다.")]
@@ -263,6 +269,8 @@ public sealed class SoulKnight : Enemy
     public float JumpAttackFallSpeed => _jumpAttackFallSpeed;
     public float JumpAttackDamage => Stats.AttackPower * _jumpAttackDamageMultiplier;
     public HitboxShape JumpAttackImpactHitbox => _jumpAttackImpactHitbox;
+    public float JumpAttackBodyDamage => Stats.AttackPower * _jumpAttackBodyDamageMultiplier;
+    public HitboxShape JumpAttackBodyHitbox => _jumpAttackBodyHitbox;
     public float JumpAttackLandProgress => _jumpAttackLandProgress;
     public float JumpAttackEndProgress => _jumpAttackEndProgress;
 
@@ -1002,7 +1010,7 @@ public sealed class SoulKnight : Enemy
         stateMachine.ChangeState(StunState);
     }
 
-    // 선택했을 때 슬라이딩 몸 충돌, 점프공격 충격, 공격 4타의 판정 범위를 그린다. 공격마다 인스펙터의 판정 범위 표시를 끄면 그 공격만 그리지 않는다.
+    // 선택했을 때 슬라이딩 몸 충돌, 점프공격 충격·몸 충돌, 공격 4타의 판정 범위를 그린다. 공격마다 인스펙터의 판정 범위 표시를 끄면 그 공격만 그리지 않는다.
     protected override void DrawHitboxGizmos(float facingDirection)
     {
         if (_showSlideHitbox)
@@ -1013,6 +1021,11 @@ public sealed class SoulKnight : Enemy
         if (_showJumpAttackHitbox)
         {
             DrawHitboxGizmo(_jumpAttackImpactHitbox, facingDirection, "점프공격 충격");
+        }
+
+        if (_showJumpAttackBodyHitbox)
+        {
+            DrawHitboxGizmo(_jumpAttackBodyHitbox, facingDirection, "점프공격 몸 충돌");
         }
 
         if (_attack1Swing.ShowHitbox)

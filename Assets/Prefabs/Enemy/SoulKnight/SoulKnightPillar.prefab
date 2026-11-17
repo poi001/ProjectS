@@ -36,6 +36,9 @@ Transform:
   - {fileID: 105446165921642740}
   - {fileID: 4317361023556899408}
   - {fileID: 3664266786229734016}
+  - {fileID: 6360997367912585983}
+  - {fileID: 4405569888983351888}
+  - {fileID: 5924924434115137156}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &4051481532918342365
@@ -109,7 +112,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 6.9}
+  m_Size: {x: 2.25, y: 6.9}
   m_EdgeRadius: 0
 --- !u!114 &537242657289912480
 MonoBehaviour:
@@ -140,6 +143,332 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _returnMode: 0
   _duration: 1
+--- !u!1 &2407716716647283687
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5924924434115137156}
+  - component: {fileID: 8510735940902498520}
+  m_Layer: 0
+  m_Name: Shatter_Reset
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5924924434115137156
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2407716716647283687}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7240298824785860547}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8510735940902498520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2407716716647283687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6da43522623d4704e979466dc7650b65, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Feedbacks: []
+  InitializationMode: 2
+  AutoInitialization: 1
+  SafeMode: 3
+  Direction: 0
+  AutoChangeDirectionOnEnd: 0
+  AutoPlayOnStart: 0
+  AutoPlayOnEnable: 0
+  ForceTimescaleMode: 0
+  ForcedTimescaleMode: 1
+  DurationMultiplier: 1
+  TimescaleMultiplier: 1
+  RandomizeDuration: 0
+  RandomDurationMultiplier: {x: 0.5, y: 1.5}
+  DisplayFullDurationDetails: 0
+  PlayerTimescaleMode: 0
+  OnlyPlayIfWithinRange: 0
+  RangeCenter: {fileID: 0}
+  RangeDistance: 5
+  UseRangeFalloff: 0
+  RangeFalloff:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  RemapRangeFalloff: {x: 0, y: 1}
+  IgnoreRangeEvents: 0
+  CooldownDuration: 0
+  InitialDelay: 0
+  CanPlay: 1
+  CanPlayWhileAlreadyPlaying: 1
+  ChanceToPlay: 100
+  FeedbacksIntensity: 1
+  Events:
+    TriggerMMFeedbacksEvents: 0
+    TriggerUnityEvents: 1
+    OnPlay:
+      m_PersistentCalls:
+        m_Calls: []
+    OnPause:
+      m_PersistentCalls:
+        m_Calls: []
+    OnStop:
+      m_PersistentCalls:
+        m_Calls: []
+    OnResume:
+      m_PersistentCalls:
+        m_Calls: []
+    OnChangeDirection:
+      m_PersistentCalls:
+        m_Calls: []
+    OnComplete:
+      m_PersistentCalls:
+        m_Calls: []
+    OnRestoreInitialValues:
+      m_PersistentCalls:
+        m_Calls: []
+    OnSkipToTheEnd:
+      m_PersistentCalls:
+        m_Calls: []
+    OnInitializationComplete:
+      m_PersistentCalls:
+        m_Calls: []
+    OnEnable:
+      m_PersistentCalls:
+        m_Calls: []
+    OnDisable:
+      m_PersistentCalls:
+        m_Calls: []
+  DebugActive: 0
+  InScriptDrivenPause: 0
+  FeedbacksList:
+  - rid: 3290641723658600717
+  - rid: 3290641723658600718
+  KeepPlayModeChanges: 0
+  PerformanceMode: 0
+  RestoreInitialValuesOnDisable: 0
+  StopFeedbacksOnDisable: 0
+  PlayCount: 0
+  MMF_ChannelMode: 0
+  MMF_Channel: 0
+  MMF_ChannelDefinition: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 3290641723658600717
+      type: {class: MMF_SetActive, ns: MoreMountains.Feedbacks, asm: MoreMountains.Tools}
+      data:
+        Active: 1
+        UniqueID: -1496787998
+        Label: "Shatter \uB044\uAE30"
+        OriginalLabel: 
+        ChannelMode: 0
+        Channel: 0
+        MMChannelDefinition: {fileID: 0}
+        Chance: 100
+        Timing:
+          TimescaleMode: 0
+          ExcludeFromHoldingPauses: 0
+          ContributeToTotalDuration: 1
+          InitialDelay: 0
+          CooldownDuration: 0
+          InterruptsOnStop: 1
+          NumberOfRepeats: 0
+          RepeatForever: 0
+          DelayBetweenRepeats: 1
+          PlayCount: 0
+          LimitPlayCount: 0
+          MaxPlayCount: 3
+          SetPlayCountToZeroOnReset: 0
+          MMFeedbacksDirectionCondition: 0
+          PlayDirection: 0
+          ConstantIntensity: 0
+          UseIntensityInterval: 0
+          IntensityIntervalMin: 0
+          IntensityIntervalMax: 0
+          Sequence: {fileID: 0}
+          TrackID: 0
+          Quantized: 0
+          TargetBPM: 120
+        AutomatedTargetAcquisition:
+          Mode: 0
+          ChildIndex: 0
+        RandomizeOutput: 0
+        RandomMultiplier: {x: 0.8, y: 1}
+        RandomizeDuration: 0
+        RandomDurationMultiplier: {x: 0.5, y: 2}
+        UseRange: 0
+        RangeDistance: 5
+        UseRangeFalloff: 0
+        RangeFalloff:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        RemapRangeFalloff: {x: 0, y: 1}
+        AutomaticShakerSetupButton:
+          ButtonText: 
+        Owner: {fileID: 8510735940902498520}
+        DebugActive: 0
+        TargetGameObject: {fileID: 7606931704614813083}
+        ExtraTargetGameObjects: []
+        IgnorePlayDirection: 1
+        SetStateOnInit: 0
+        StateOnInit: 1
+        SetStateOnPlay: 1
+        StateOnPlay: 1
+        SetStateOnStop: 0
+        StateOnStop: 1
+        SetStateOnReset: 0
+        StateOnReset: 1
+        SetStateOnSkip: 0
+        StateOnSkip: 1
+        SetStateOnPlayerComplete: 0
+        StateOnPlayerComplete: 1
+    - rid: 3290641723658600718
+      type: {class: MMF_SetActive, ns: MoreMountains.Feedbacks, asm: MoreMountains.Tools}
+      data:
+        Active: 1
+        UniqueID: 849076262
+        Label: "Crystal \uCF1C\uAE30"
+        OriginalLabel: 
+        ChannelMode: 0
+        Channel: 0
+        MMChannelDefinition: {fileID: 0}
+        Chance: 100
+        Timing:
+          TimescaleMode: 0
+          ExcludeFromHoldingPauses: 0
+          ContributeToTotalDuration: 1
+          InitialDelay: 0
+          CooldownDuration: 0
+          InterruptsOnStop: 1
+          NumberOfRepeats: 0
+          RepeatForever: 0
+          DelayBetweenRepeats: 1
+          PlayCount: 0
+          LimitPlayCount: 0
+          MaxPlayCount: 3
+          SetPlayCountToZeroOnReset: 0
+          MMFeedbacksDirectionCondition: 0
+          PlayDirection: 0
+          ConstantIntensity: 0
+          UseIntensityInterval: 0
+          IntensityIntervalMin: 0
+          IntensityIntervalMax: 0
+          Sequence: {fileID: 0}
+          TrackID: 0
+          Quantized: 0
+          TargetBPM: 120
+        AutomatedTargetAcquisition:
+          Mode: 0
+          ChildIndex: 0
+        RandomizeOutput: 0
+        RandomMultiplier: {x: 0.8, y: 1}
+        RandomizeDuration: 0
+        RandomDurationMultiplier: {x: 0.5, y: 2}
+        UseRange: 0
+        RangeDistance: 5
+        UseRangeFalloff: 0
+        RangeFalloff:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        RemapRangeFalloff: {x: 0, y: 1}
+        AutomaticShakerSetupButton:
+          ButtonText: 
+        Owner: {fileID: 8510735940902498520}
+        DebugActive: 0
+        TargetGameObject: {fileID: 8964512339817209512}
+        ExtraTargetGameObjects: []
+        IgnorePlayDirection: 1
+        SetStateOnInit: 0
+        StateOnInit: 1
+        SetStateOnPlay: 1
+        StateOnPlay: 0
+        SetStateOnStop: 0
+        StateOnStop: 1
+        SetStateOnReset: 0
+        StateOnReset: 1
+        SetStateOnSkip: 0
+        StateOnSkip: 1
+        SetStateOnPlayerComplete: 0
+        StateOnPlayerComplete: 1
 --- !u!1 &2446363683094810140
 GameObject:
   m_ObjectHideFlags: 0
@@ -167,7 +496,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -3.5, z: 0}
-  m_LocalScale: {x: 1, y: 7, z: 1}
+  m_LocalScale: {x: 2.25, y: 7, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 7240298824785860547}
@@ -303,8 +632,334 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.9, y: 0.1}
+  m_Size: {x: 2.0249999, y: 0.1}
   m_EdgeRadius: 0
+--- !u!1 &5586508690980736946
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4405569888983351888}
+  - component: {fileID: 2112764549747271597}
+  m_Layer: 0
+  m_Name: Shatter_Hit
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4405569888983351888
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5586508690980736946}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7240298824785860547}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2112764549747271597
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5586508690980736946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6da43522623d4704e979466dc7650b65, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Feedbacks: []
+  InitializationMode: 2
+  AutoInitialization: 1
+  SafeMode: 3
+  Direction: 0
+  AutoChangeDirectionOnEnd: 0
+  AutoPlayOnStart: 0
+  AutoPlayOnEnable: 0
+  ForceTimescaleMode: 0
+  ForcedTimescaleMode: 1
+  DurationMultiplier: 1
+  TimescaleMultiplier: 1
+  RandomizeDuration: 0
+  RandomDurationMultiplier: {x: 0.5, y: 1.5}
+  DisplayFullDurationDetails: 0
+  PlayerTimescaleMode: 0
+  OnlyPlayIfWithinRange: 0
+  RangeCenter: {fileID: 0}
+  RangeDistance: 5
+  UseRangeFalloff: 0
+  RangeFalloff:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  RemapRangeFalloff: {x: 0, y: 1}
+  IgnoreRangeEvents: 0
+  CooldownDuration: 0
+  InitialDelay: 0
+  CanPlay: 1
+  CanPlayWhileAlreadyPlaying: 1
+  ChanceToPlay: 100
+  FeedbacksIntensity: 1
+  Events:
+    TriggerMMFeedbacksEvents: 0
+    TriggerUnityEvents: 1
+    OnPlay:
+      m_PersistentCalls:
+        m_Calls: []
+    OnPause:
+      m_PersistentCalls:
+        m_Calls: []
+    OnStop:
+      m_PersistentCalls:
+        m_Calls: []
+    OnResume:
+      m_PersistentCalls:
+        m_Calls: []
+    OnChangeDirection:
+      m_PersistentCalls:
+        m_Calls: []
+    OnComplete:
+      m_PersistentCalls:
+        m_Calls: []
+    OnRestoreInitialValues:
+      m_PersistentCalls:
+        m_Calls: []
+    OnSkipToTheEnd:
+      m_PersistentCalls:
+        m_Calls: []
+    OnInitializationComplete:
+      m_PersistentCalls:
+        m_Calls: []
+    OnEnable:
+      m_PersistentCalls:
+        m_Calls: []
+    OnDisable:
+      m_PersistentCalls:
+        m_Calls: []
+  DebugActive: 0
+  InScriptDrivenPause: 0
+  FeedbacksList:
+  - rid: 3290641723658600715
+  - rid: 3290641723658600716
+  KeepPlayModeChanges: 0
+  PerformanceMode: 0
+  RestoreInitialValuesOnDisable: 0
+  StopFeedbacksOnDisable: 0
+  PlayCount: 0
+  MMF_ChannelMode: 0
+  MMF_Channel: 0
+  MMF_ChannelDefinition: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 3290641723658600715
+      type: {class: MMF_SetActive, ns: MoreMountains.Feedbacks, asm: MoreMountains.Tools}
+      data:
+        Active: 1
+        UniqueID: -840776907
+        Label: "Crystal \uB044\uAE30"
+        OriginalLabel: 
+        ChannelMode: 0
+        Channel: 0
+        MMChannelDefinition: {fileID: 0}
+        Chance: 100
+        Timing:
+          TimescaleMode: 0
+          ExcludeFromHoldingPauses: 0
+          ContributeToTotalDuration: 1
+          InitialDelay: 0
+          CooldownDuration: 0
+          InterruptsOnStop: 1
+          NumberOfRepeats: 0
+          RepeatForever: 0
+          DelayBetweenRepeats: 1
+          PlayCount: 0
+          LimitPlayCount: 0
+          MaxPlayCount: 3
+          SetPlayCountToZeroOnReset: 0
+          MMFeedbacksDirectionCondition: 0
+          PlayDirection: 0
+          ConstantIntensity: 0
+          UseIntensityInterval: 0
+          IntensityIntervalMin: 0
+          IntensityIntervalMax: 0
+          Sequence: {fileID: 0}
+          TrackID: 0
+          Quantized: 0
+          TargetBPM: 120
+        AutomatedTargetAcquisition:
+          Mode: 0
+          ChildIndex: 0
+        RandomizeOutput: 0
+        RandomMultiplier: {x: 0.8, y: 1}
+        RandomizeDuration: 0
+        RandomDurationMultiplier: {x: 0.5, y: 2}
+        UseRange: 0
+        RangeDistance: 5
+        UseRangeFalloff: 0
+        RangeFalloff:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        RemapRangeFalloff: {x: 0, y: 1}
+        AutomaticShakerSetupButton:
+          ButtonText: 
+        Owner: {fileID: 2112764549747271597}
+        DebugActive: 0
+        TargetGameObject: {fileID: 8964512339817209512}
+        ExtraTargetGameObjects: []
+        IgnorePlayDirection: 1
+        SetStateOnInit: 0
+        StateOnInit: 1
+        SetStateOnPlay: 1
+        StateOnPlay: 1
+        SetStateOnStop: 0
+        StateOnStop: 1
+        SetStateOnReset: 0
+        StateOnReset: 1
+        SetStateOnSkip: 0
+        StateOnSkip: 1
+        SetStateOnPlayerComplete: 0
+        StateOnPlayerComplete: 1
+    - rid: 3290641723658600716
+      type: {class: MMF_SetActive, ns: MoreMountains.Feedbacks, asm: MoreMountains.Tools}
+      data:
+        Active: 1
+        UniqueID: -1279162477
+        Label: "Shatter \uCF1C\uAE30"
+        OriginalLabel: 
+        ChannelMode: 0
+        Channel: 0
+        MMChannelDefinition: {fileID: 0}
+        Chance: 100
+        Timing:
+          TimescaleMode: 0
+          ExcludeFromHoldingPauses: 0
+          ContributeToTotalDuration: 1
+          InitialDelay: 0
+          CooldownDuration: 0
+          InterruptsOnStop: 1
+          NumberOfRepeats: 0
+          RepeatForever: 0
+          DelayBetweenRepeats: 1
+          PlayCount: 0
+          LimitPlayCount: 0
+          MaxPlayCount: 3
+          SetPlayCountToZeroOnReset: 0
+          MMFeedbacksDirectionCondition: 0
+          PlayDirection: 0
+          ConstantIntensity: 0
+          UseIntensityInterval: 0
+          IntensityIntervalMin: 0
+          IntensityIntervalMax: 0
+          Sequence: {fileID: 0}
+          TrackID: 0
+          Quantized: 0
+          TargetBPM: 120
+        AutomatedTargetAcquisition:
+          Mode: 0
+          ChildIndex: 0
+        RandomizeOutput: 0
+        RandomMultiplier: {x: 0.8, y: 1}
+        RandomizeDuration: 0
+        RandomDurationMultiplier: {x: 0.5, y: 2}
+        UseRange: 0
+        RangeDistance: 5
+        UseRangeFalloff: 0
+        RangeFalloff:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0
+            inSlope: 0
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        RemapRangeFalloff: {x: 0, y: 1}
+        AutomaticShakerSetupButton:
+          ButtonText: 
+        Owner: {fileID: 2112764549747271597}
+        DebugActive: 0
+        TargetGameObject: {fileID: 7606931704614813083}
+        ExtraTargetGameObjects: []
+        IgnorePlayDirection: 1
+        SetStateOnInit: 0
+        StateOnInit: 1
+        SetStateOnPlay: 1
+        StateOnPlay: 0
+        SetStateOnStop: 0
+        StateOnStop: 1
+        SetStateOnReset: 0
+        StateOnReset: 1
+        SetStateOnSkip: 0
+        StateOnSkip: 1
+        SetStateOnPlayerComplete: 0
+        StateOnPlayerComplete: 1
 --- !u!1 &7019027156551167277
 GameObject:
   m_ObjectHideFlags: 0
@@ -314,7 +969,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3664266786229734016}
-  - component: {fileID: 9147199407711653779}
   - component: {fileID: 6399821937077507572}
   - component: {fileID: 1463242100795622013}
   m_Layer: 6
@@ -333,67 +987,13 @@ Transform:
   m_GameObject: {fileID: 7019027156551167277}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.3, z: 0}
-  m_LocalScale: {x: 0.6, y: 0.6, z: 1}
+  m_LocalPosition: {x: 0, y: 0.7, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 5578800627809989978}
   m_Father: {fileID: 7240298824785860547}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &9147199407711653779
-SpriteRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7019027156551167277}
-  m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 0
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 0
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 1381404352
-  m_SortingLayer: 1
-  m_SortingOrder: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 1, g: 0.85, b: 0.2, a: 1}
-  m_FlipX: 0
-  m_FlipY: 0
-  m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
-  m_AdaptiveModeThreshold: 0.5
-  m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
-  m_SpriteSortPoint: 0
 --- !u!61 &6399821937077507572
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -438,7 +1038,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.8, y: 1}
   m_EdgeRadius: 0
 --- !u!114 &1463242100795622013
 MonoBehaviour:
@@ -452,3 +1052,374 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a91dd7bb5f5211a4c8211a7cb2eeda38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _hitFeedbacks: {fileID: 2112764549747271597}
+  _resetFeedbacks: {fileID: 8510735940902498520}
+--- !u!1 &7606931704614813083
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6360997367912585983}
+  - component: {fileID: 1219821776339095250}
+  - component: {fileID: 4411729105204863301}
+  m_Layer: 10
+  m_Name: Shatter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &6360997367912585983
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7606931704614813083}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 4.9777775, y: 4.9777775, z: 4.9777775}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7240298824785860547}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &1219821776339095250
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7606931704614813083}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 1701885051
+  m_SortingLayer: 3
+  m_SortingOrder: 1
+  m_Sprite: {fileID: -3781628428881425052, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 1.875, y: 1}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_MaskInteraction: 0
+  m_SpriteSortPoint: 0
+--- !u!114 &4411729105204863301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7606931704614813083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ff6ef7beabe27343859172f7b21ba0a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _frames:
+  - {fileID: -3781628428881425052, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -8989846471801328101, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 3266955038285610172, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 5537888551852731248, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 1330348433134999413, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 7887874000488196335, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 4168172091275135455, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -3007704944964296255, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 6660078572844899930, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -5188661658875976280, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -6500312638314663023, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 7834552660982483323, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -6146223835495849731, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -5854366428104146119, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -2749093890857931299, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 8138386161071541980, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 1336706346021788509, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 7314953031532620059, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -5428527902999938254, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 6856876338937617890, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -847037894147151759, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 2141763554383895278, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -628230843808956775, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 6200805245046250805, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 401579185417772111, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 8732478364063845891, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 5581987263974512636, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -7928871261076301982, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -2183376328445377287, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -9212277316171064912, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 1336870225095556999, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -3988748608051059302, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 7562497131730121331, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -3287329696101485372, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 7771026830535882809, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -9016324938205369801, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -6369836135407085828, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 231559589896978909, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 5473266920860443930, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -4961409822698904536, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -2812460802610768182, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -967436046270490918, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 7223553402395631227, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -8397066501429303309, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 8340078440586456375, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -7887298667636442233, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 4893212335058361776, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 8945646873513074446, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -8308531786541865214, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -1364269796744603304, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -8549808205609098275, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -6028303510554057212, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 8311822672227104228, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -4455893573128629228, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -6218844970617106416, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 5948249155741842785, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -953621909942715515, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 4014666738793316964, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 2089025301128700781, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -171166533290723513, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -3780753659891246708, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 2631223891957222641, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -8946350052945916052, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -7098246345849342972, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -6088705032632285476, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: -4940893778240249369, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  - {fileID: 4537533795693354977, guid: b643289fecb33224e983c518b8fc3edb, type: 3}
+  _duration: 2.2
+  _loop: 0
+--- !u!1 &8964512339817209512
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5578800627809989978}
+  - component: {fileID: 4846446053543232412}
+  - component: {fileID: 467432701524553696}
+  m_Layer: 6
+  m_Name: Crystal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5578800627809989978
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8964512339817209512}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 2.8, y: 2.8, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3664266786229734016}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &4846446053543232412
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8964512339817209512}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 1701885051
+  m_SortingLayer: 3
+  m_SortingOrder: 0
+  m_Sprite: {fileID: -1709924021066211005, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 1, y: 1.1111112}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_MaskInteraction: 0
+  m_SpriteSortPoint: 0
+--- !u!114 &467432701524553696
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8964512339817209512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ff6ef7beabe27343859172f7b21ba0a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _frames:
+  - {fileID: -1709924021066211005, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3789736959838210399, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -2964812761627963506, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 1982390282615541356, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 494312851887126555, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -6083500919497203675, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4235716857578825806, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 5603565300012143424, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -373118067952218863, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -5875400887346368591, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 4789240071629931866, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 5914345577705889540, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 46600015553657034, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 7358548910975520090, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3266795077697400960, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 497098632628090614, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -7876148243241312113, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -5028204998979519511, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8390825961590141695, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 1744640453504235330, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3110956666134893240, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4376679733898157871, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4943312182060227113, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -2855812168253496737, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6159688456889176445, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 8364385176404636166, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8682929749205206440, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8749421042699367270, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4212843859556967498, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6291273567602409984, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 5720751582074553191, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6982742479350336865, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -2340241125936041436, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -357896964430643879, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6580826653178218486, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 5627450883211732764, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 3612225665667711611, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -6398532125805734925, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 2455013704142125210, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8031258746842332299, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -687994911099466486, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 8761242949619274448, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -6994496149799357704, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6756087766988931581, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -2630637124760184637, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 60088556148348657, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8755843174285717613, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -9142745195758118958, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -7509802335666332962, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8720849396283341875, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8273274174829339919, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3060521070447297356, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -38249536814359409, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 7705749647772914733, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6148196002924666053, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -6427950250759299628, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -528135737553476869, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 7261793999684929179, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 5170411035326146255, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -1785707505627783140, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -6134964138216909706, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6993197478692978403, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -328349836785395588, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -6237322209627086999, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -7887923098480848971, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -875729914117456261, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -7508312079894292379, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -6860859654420109979, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4164216259499531205, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 146723616552641783, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 1748324390536822261, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -8085331339395582684, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6575630575880425956, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3396840060087316310, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 6991582557367142307, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4196138372601019667, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -1298239086487543862, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3849929266086966204, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 2168031946025955133, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 7347541141651778095, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 5156860348620905632, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 8564962686629761862, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4645816319436782801, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 97484614558496381, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -4190138064400244234, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 870083424651057248, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3527023317029166952, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -5562306288528595553, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 5955471033937524789, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 916775937488931575, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -3501337090142538713, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: -7429067615503743054, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 2821962252144686755, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 2357415640247675995, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 2177203445772716473, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  - {fileID: 4416741957049461512, guid: 88b7be740fee415458dd38af267a5061, type: 3}
+  _duration: 3.2
+  _loop: 1

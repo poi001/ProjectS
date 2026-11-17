@@ -45,14 +45,31 @@ public class SoulKnightPillar : MonoBehaviour
     // 이 기둥의 목표물이 공격을 맞았을 때 발생한다.
     public event Action TargetHit;
 
+    // 목표물(결석)이 켜져 있는지. 목표물로 뽑힌 기둥이 솟아 있고 아직 내려가기 전이면 true다.
+    public bool HasActiveTarget => _target != null && _target.gameObject.activeInHierarchy;
+    // 목표물(결석)의 월드 위치. 결석이 쏘는 번개가 시작되는 곳이다.
+    public Vector2 TargetPosition => _target != null ? (Vector2)_target.transform.position : (Vector2)transform.position;
+    // 목표물(결석) 오브젝트. 번개에 맞은 플레이어는 이 오브젝트의 반대쪽으로 밀려난다.
+    public GameObject TargetObject => _target != null ? _target.gameObject : gameObject;
+
+    // 기둥의 가로폭 (옆면 콜라이더 기준, 월드 거리). 프리팹 에셋에서도 읽을 수 있다. 기둥을 벽에 붙여 놓을 자리를 계산할 때 쓴다.
+    public float Width
+    {
+        get
+        {
+            BoxCollider2D side = GetComponent<BoxCollider2D>();
+
+            return side.size.x * Mathf.Abs(transform.lossyScale.x);
+        }
+    }
+
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
         _ghostLayer = LayerMask.NameToLayer(GhostLayerName);
         _sideLayer = gameObject.layer;
         _topLayer = _topCollider != null ? _topCollider.gameObject.layer : _sideLayer;
-        BoxCollider2D side = GetComponent<BoxCollider2D>();
-        _halfWidth = side.size.x * 0.5f * Mathf.Abs(transform.lossyScale.x);
+        _halfWidth = Width * 0.5f;
 
         if (_ghostLayer < 0)
         {

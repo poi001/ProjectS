@@ -1,10 +1,11 @@
 using UnityEngine;
 
 // 점프공격. 점프의 최고점에서 자신의 바로 아래로 수직으로 내려찍는다. (Enemy_GDD 6장)
-// 낙하 중에는 중력을 끄고 정해진 속도로 곧장 떨어진다. 낙하 중 몸에 닿아도 피해는 없다.
+// 낙하 중에는 중력을 끄고 정해진 속도로 곧장 떨어진다. 떨어지는 동안 몸(JumpAttackBodyHitbox)에 닿은 플레이어는 피해를 입는다. (한 번의 점프공격에 한 번)
 // 바닥에 닿는(접지) 순간 그 자리에서 SoulKnight 주변에 범위 충격을 한 번 낸다. (다단히트 없음) 충격음과 카메라 흔들림도 함께 낸다.
 // 충격 뒤에는 착지 모습을 재생하고 Idle로 넘어간다.
-// 내려찍기를 시작할 때 패턴 게이지가 차고(Knight의 슬라이딩과 같은 양), 충격이 플레이어를 맞히면 준다.
+// 내려찍기를 시작할 때 패턴 게이지가 차고(Knight의 슬라이딩과 같은 양), 몸 충돌이나 충격이 플레이어를 맞히면 준다.
+// 몸 충돌로 맞은 플레이어는 피격 무적 때문에 이어지는 착지 충격에는 맞지 않는다.
 // 바닥에 닿지 못하는 예외 상황은 MaxFallDuration이 지나면 그 자리에서 충격을 내는 것으로 막는다.
 // 애니메이션은 JumpAttack 클립 하나를 나눠 쓴다. 착지 지점(JumpAttackLandProgress) 직전의 낙하 모습에서 멈춘 채 떨어지고, 바닥에 닿으면 나머지를 재생한다.
 public class SoulKnightJumpAttackState : SoulKnightState
@@ -25,6 +26,7 @@ public class SoulKnightJumpAttackState : SoulKnightState
         boss.AddPatternGaugeByAttack(boss.PatternGaugeGain);
         _enterTime = Time.time;
         _isLanding = false;
+        boss.HitChecker.ResetHitTargets();
 
         boss.Movement.SetGravityEnabled(false);
         boss.Movement.SetVelocity(new Vector2(0f, -boss.JumpAttackFallSpeed));
@@ -59,6 +61,10 @@ public class SoulKnightJumpAttackState : SoulKnightState
         {
             return;
         }
+
+        // 떨어지는 동안 몸에 닿은 플레이어에게 피해를 준다. 이미 맞힌 대상은 다시 맞지 않는다.
+        int hitCount = boss.HitChecker.Hit(boss.JumpAttackBodyHitbox, boss.JumpAttackBodyDamage, boss.Animation.FacingDirection);
+        boss.ReducePatternGaugeByHits(hitCount);
 
         bool isTimeOver = Time.time - _enterTime >= MaxFallDuration;
 

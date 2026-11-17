@@ -3397,6 +3397,11 @@ MonoBehaviour:
   _pillarCount: 4
   _riseDuration: 1.2
   _sinkDuration: 0.4
+  _clearedSinkDelay: 1.2
+  _boltPrefab: {fileID: 6862184288499904972, guid: e5e6d15a402143841806666c9aa9febb, type: 3}
+  _boltInterval: 1
+  _boltWarningTime: 1
+  _boltDamageMultiplier: 0.5
 --- !u!1 &8111562296461518918
 GameObject:
   m_ObjectHideFlags: 0
