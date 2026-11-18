@@ -760,7 +760,7 @@ MonoBehaviour:
   _perchMarginY: 3
   _patternInterval: 2
   _breathChance: 0.5
-  _breathDuration: 3
+  _breathDuration: 1.5
   _breathAngle: 30
   _breathMouthOffset: {x: 0.3, y: -0.5}
   _breathWidth: 0.8

@@ -49,7 +49,7 @@ public class BloodWing : Enemy
 
     [Header("브레스 (공격)")]
     [Tooltip("브레스를 뿜으며 반대쪽 대기 위치까지 같은 높이로 날아가는 데 걸리는 시간입니다. 일정한 속도로 움직입니다. 전조 시간은 포함하지 않습니다. (전조 시간은 BloodWing_AttackReady 클립 길이입니다) 기획이 정해지기 전의 임시값입니다. (단위: 초)")]
-    [SerializeField, Min(0.01f)] private float _breathDuration = 3f;
+    [SerializeField, Min(0.01f)] private float _breathDuration = 1.5f;
     [Tooltip("화염이 뻗는 각도입니다. 바로 아래(수직)를 0으로 해서 날아가는 쪽(앞)으로 기울어진 각도입니다. 클수록 앞쪽 멀리 닿고, 보스 아래의 안전한 공간이 넓어집니다. (단위: 도)")]
     [SerializeField, Range(0f, 80f)] private float _breathAngle = 30f;
     [Tooltip("화염이 시작되는 입 위치입니다. 루트 위치 기준이며 오른쪽을 볼 때 기준입니다. (단위: 월드 거리)")]
