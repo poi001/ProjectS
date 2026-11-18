@@ -14,6 +14,8 @@ public class Flipbook : MonoBehaviour
     // 모든 프레임을 한 번 재생하는 데 걸리는 시간(초)
     [SerializeField, Min(0.01f)] private float _duration = 0.35f;
     [SerializeField] private bool _loop;
+    [Tooltip("켜 두면 슬로우 모션(Time.timeScale)과 관계없이 실제 시간으로 재생합니다. 슬로우 모션 중에도 제 속도로 보여야 하는 화면 효과(임팩트 프레임 등)에 씁니다. 일시정지(timeScale 0) 중에는 멈춥니다.\n끄면 게임 시간으로 재생해 슬로우 모션 때 함께 느려집니다.")]
+    [SerializeField] private bool _useUnscaledTime;
 
     private SpriteRenderer _spriteRenderer;
     private PooledObject _pooledObject;
@@ -52,7 +54,15 @@ public class Flipbook : MonoBehaviour
 
     private void Update()
     {
-        _elapsedTime += Time.deltaTime;
+        // 실제 시간으로 재생할 때도 일시정지(timeScale 0) 중에는 넘기지 않는다. (unscaledDeltaTime은 일시정지 중에도 흐른다)
+        if (_useUnscaledTime)
+        {
+            _elapsedTime += Time.timeScale > 0f ? Time.unscaledDeltaTime : 0f;
+        }
+        else
+        {
+            _elapsedTime += Time.deltaTime;
+        }
 
         if (_elapsedTime >= _duration)
         {
