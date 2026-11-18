@@ -258,6 +258,10 @@ public abstract class Enemy : Character
         return false;
     }
 
+    // Idle 시간을 지금 세도 되는지. false인 동안에는 시간이 흐르지 않고, true가 되는 순간부터 센다.
+    // 기본은 항상 센다. 땅에 닿은 뒤부터 세야 하는 보스(Mushroom 등)는 오버라이드한다.
+    public virtual bool CanCountIdleTime => true;
+
     // 다음 페이즈가 남은 채로 체력을 모두 잃었을 때 호출된다. 이 보스의 전환 연출을 시작한다.
     // 보스는 오버라이드해 자기 전환 상태(애니메이션·기믹)로 바꾸고, 그 연출이 끝나면 StartPhaseRefill을 호출한다. (base는 호출하지 않는다)
     // 어떤 패턴 도중에도 들어올 수 있으며, 상태를 바꾸면 진행 중이던 패턴은 Exit으로 끊긴다.

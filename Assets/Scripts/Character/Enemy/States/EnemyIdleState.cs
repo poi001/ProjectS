@@ -2,6 +2,7 @@ using UnityEngine;
 
 // 가만히 있는 상태. 패턴 사이에 플레이어가 공격할 시간을 주고, 정해진 시간이 지나면 다음 패턴으로 넘어간다.
 // 플레이어가 죽어 있는 동안에는 다음 패턴으로 넘어가지 않고 계속 머문다. (GDD 6.6)
+// 보스가 Enemy.CanCountIdleTime을 false로 두는 동안(Mushroom은 공중)에는 시간을 세지 않고, true가 되는 순간부터 센다.
 public class EnemyIdleState : EnemyState
 {
     private float _duration;
@@ -35,6 +36,13 @@ public class EnemyIdleState : EnemyState
         // 쉬는 도중에 끼어드는 보스 고유 전환(SoulKnight의 체력 50% 이하 기도 등)이 있으면 그쪽을 따른다.
         if (owner.TryInterruptIdle())
         {
+            return;
+        }
+
+        // 시간을 셀 수 없는 동안(공중 등)에는 기준 시각을 계속 현재로 옮겨, 셀 수 있게 되는 순간부터 센다.
+        if (!owner.CanCountIdleTime)
+        {
+            _enterTime = Time.time;
             return;
         }
 
