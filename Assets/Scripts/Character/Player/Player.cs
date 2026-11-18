@@ -76,6 +76,16 @@ public class Player : Character
     // 입력을 잠그는 이유들. 하나라도 켜져 있으면 조작을 받지 않는다. (RefreshInputLock)
     private bool _isCinematicPlaying;
     private bool _isGamePaused;
+    // 시네마틱 중에도 공격만은 받을지 여부. 시네마틱을 연 쪽이 켜고(SetCinematicAttackAllowed), 시네마틱이 끝나면 꺼진다.
+    private bool _isCinematicAttackAllowed;
+    // 시네마틱이 공격을 허용한 동안 콤보(2타·3타)로 이어갈 수 있는지 여부. 공격을 허용할 때 연 쪽이 함께 정한다. (SetCinematicAttackAllowed)
+    private bool _isCinematicComboAllowed = true;
+    // 시네마틱 중 다른 쪽이 플레이어를 가로로 옮기는 중인지와 그 구간 (StartCinematicSlide)
+    private bool _isCinematicSliding;
+    private float _cinematicSlideStartX;
+    private float _cinematicSlideTargetX;
+    private float _cinematicSlideDuration;
+    private float _cinematicSlideElapsedTime;
 
     public PlayerInputHandler InputHandler { get; private set; }
     public CharacterVital Vital { get; private set; }
@@ -111,6 +121,9 @@ public class Player : Character
     public int ComboCount { get; private set; }
 
     public State<Player> CurrentState => _stateMachine.CurrentState;
+
+    // 지금 지상 콤보를 다음 타로 이어갈 수 없는지 여부. 시네마틱이 공격만 허용하면서 콤보는 막은 동안 true다. (PlayerAttackState가 확인한다)
+    public bool IsComboBlocked => _isCinematicPlaying && _isCinematicAttackAllowed && !_isCinematicComboAllowed;
 
     protected override string HurtboxLayerName => "Player";
     protected override string TargetLayerName => "Enemy";
@@ -171,6 +184,9 @@ public class Player : Character
         EventBus<CinematicEndedEvent>.Subscribe(OnCinematicEnded);
         EventBus<GamePauseChangedEvent>.Subscribe(OnGamePauseChanged);
         _isCinematicPlaying = false;
+        _isCinematicAttackAllowed = false;
+        _isCinematicComboAllowed = true;
+        _isCinematicSliding = false;
         _isGamePaused = GameManager.HasInstance && GameManager.Instance.IsPaused;
         RefreshInputLock();
         _stateMachine.Initialize(IdleState);
@@ -187,8 +203,12 @@ public class Player : Character
         EventBus<CinematicEndedEvent>.Unsubscribe(OnCinematicEnded);
         EventBus<GamePauseChangedEvent>.Unsubscribe(OnGamePauseChanged);
         _isCinematicPlaying = false;
+        _isCinematicAttackAllowed = false;
+        _isCinematicComboAllowed = true;
+        _isCinematicSliding = false;
         _isGamePaused = false;
         InputHandler.SetLocked(false);
+        InputHandler.SetAttackAllowedWhileLocked(false);
         base.OnRelease();
     }
 
@@ -196,13 +216,65 @@ public class Player : Character
     private void OnCinematicStarted(CinematicStartedEvent cinematicEvent)
     {
         _isCinematicPlaying = true;
+        _isCinematicAttackAllowed = false;
+        _isCinematicComboAllowed = true;
         RefreshInputLock();
     }
 
+    // 시네마틱이 끝나면 공격 허용과 가로 이동도 함께 끝낸다. (연 쪽이 따로 끄지 않아도 남지 않게 한다)
     private void OnCinematicEnded(CinematicEndedEvent cinematicEvent)
     {
         _isCinematicPlaying = false;
+        _isCinematicAttackAllowed = false;
+        _isCinematicComboAllowed = true;
+        _isCinematicSliding = false;
         RefreshInputLock();
+    }
+
+    // 시네마틱 중에도 공격 입력만은 받게 하거나 다시 막는다. 이동·점프·대시는 계속 막힌다. 시네마틱 중이 아니면 아무 효과가 없다.
+    // allowsCombo: 공격을 허용하는 동안 콤보(2타·3타)로 이어갈 수 있는지. false면 공격을 눌러도 항상 1타만 나간다. (1타가 끝난 뒤 다시 누르면 다시 1타)
+    // 시네마틱을 연 쪽이 호출하며, 콤보를 막을지도 그쪽이 정한다. 시네마틱이 끝나면 공격 허용과 함께 콤보 설정도 기본값(허용)으로 돌아온다.
+    // (Mushroom 반응속도 기믹: 제자리에서 1타의 타이밍만 겨루도록 콤보를 막는다)
+    public void SetCinematicAttackAllowed(bool isAllowed, bool allowsCombo)
+    {
+        _isCinematicAttackAllowed = isAllowed;
+        _isCinematicComboAllowed = allowsCombo;
+        RefreshInputLock();
+    }
+
+    // 시네마틱 중 플레이어를 targetX까지 duration초에 걸쳐 가로로 부드럽게 옮기고 facingDirection(오른쪽 1, 왼쪽 -1) 쪽을 보게 한다.
+    // 시네마틱을 연 쪽이 자리 배치에 쓴다. 조작이 잠겨 있어 자세는 제자리 자세(Idle) 그대로이며, 세로는 중력에 맡긴다.
+    // 벽에 막히면 그 자리에서 멈춘 채 시간이 끝난다. 시네마틱이 끝나거나 죽으면 중간에 멈춘다.
+    public void StartCinematicSlide(float targetX, float duration, float facingDirection)
+    {
+        _isCinematicSliding = true;
+        _cinematicSlideStartX = Movement.Position.x;
+        _cinematicSlideTargetX = targetX;
+        _cinematicSlideDuration = Mathf.Max(duration, Time.fixedDeltaTime);
+        _cinematicSlideElapsedTime = 0f;
+        Animation.UpdateFacing(facingDirection);
+    }
+
+    // 상태가 가로 속도를 정한 뒤에 호출해, 이번 물리 스텝의 가로 속도를 자리 배치용 속도로 덮어쓴다. (FixedUpdate)
+    // 처음과 끝이 느린 곡선(SmoothStep)으로 움직이며, 다음 스텝의 목표 자리까지 가는 속도를 매번 다시 계산해 오차가 쌓이지 않게 한다.
+    private void UpdateCinematicSlide()
+    {
+        if (Vital.IsDead)
+        {
+            _isCinematicSliding = false;
+            return;
+        }
+
+        _cinematicSlideElapsedTime += Time.fixedDeltaTime;
+        float progress = Mathf.Clamp01(_cinematicSlideElapsedTime / _cinematicSlideDuration);
+        float nextX = Mathf.Lerp(_cinematicSlideStartX, _cinematicSlideTargetX, Mathf.SmoothStep(0f, 1f, progress));
+        Movement.SetVelocityX((nextX - Movement.Position.x) / Time.fixedDeltaTime);
+
+        // 마지막 스텝의 속도로 목표 자리에 닿으므로, 그다음 스텝부터는 상태가 정한 속도(0)를 그대로 쓴다.
+        if (progress >= 1f)
+        {
+            _isCinematicSliding = false;
+        }
     }
 
     // 일시정지(옵션 창 등) 동안에는 조작을 받지 않는다. 멈춘 동안 누른 키가 다시 진행될 때 뒤늦게 실행되지 않게 한다.
@@ -213,9 +285,11 @@ public class Player : Character
     }
 
     // 시네마틱과 일시정지가 겹칠 수 있으므로, 둘 중 하나라도 진행 중이면 입력을 잠근다.
+    // 시네마틱이 공격을 허용한 동안에는 잠근 채로 공격 입력만 받는다. 일시정지 중에는 공격도 받지 않는다.
     private void RefreshInputLock()
     {
         InputHandler.SetLocked(_isCinematicPlaying || _isGamePaused);
+        InputHandler.SetAttackAllowedWhileLocked(_isCinematicPlaying && _isCinematicAttackAllowed && !_isGamePaused);
     }
 
     private void Update()
@@ -243,6 +317,11 @@ public class Player : Character
         }
 
         _stateMachine.PhysicsUpdate();
+
+        if (_isCinematicSliding)
+        {
+            UpdateCinematicSlide();
+        }
     }
 
     // 공중 점프 횟수와 공중 대시를 다시 채운다. 땅에 닿아 있을 때만 호출된다. (벽을 타도 공중 점프는 채워지지 않는다)

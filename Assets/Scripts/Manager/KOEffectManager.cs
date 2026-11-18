@@ -127,11 +127,15 @@ public class KOEffectManager : MonoBehaviour
 
     private void PlayEnter(GameObject target)
     {
+        // Feel의 줌 셰이커는 멈출 때 카메라 크기를 자신의 기본값으로 되돌리므로, 멈춘 뒤 멈추기 직전의 크기로 다시 맞춘다.
+        // 이렇게 하지 않으면 시네마틱으로 줌인된 채 죽었을 때(Mushroom 반응속도 기믹 등) 화면이 한 번 튄 뒤에 줌인한다. (CinematicManager와 같은 처리)
+        float currentSize = _camera.orthographicSize;
         _exitFeedbacks.StopFeedbacks();
+        _camera.orthographicSize = currentSize;
         _focusPoint.position = GetFocusPosition(target);
 
-        // 지금 크기에서 줌 크기로. (복귀 중에 또 죽은 경우를 위해 현재 크기에서 시작한다)
-        _enterZoom.RemapOrthographicSizeZero = _camera.orthographicSize;
+        // 지금 크기에서 줌 크기로. (복귀 중에 또 죽은 경우나 시네마틱으로 줌인된 경우를 위해 현재 크기에서 시작한다)
+        _enterZoom.RemapOrthographicSizeZero = currentSize;
         _enterZoom.RemapOrthographicSizeOne = Mathf.Min(_zoomedOrthographicSize, _homeOrthographicSize);
 
         _enterFeedbacks.PlayFeedbacks();

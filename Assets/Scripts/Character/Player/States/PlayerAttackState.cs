@@ -83,11 +83,12 @@ public class PlayerAttackState : PlayerState
     }
 
     // 다음 콤보가 남아 있고, 땅 위에 있으며, 공격 애니메이션이 끝나기 직전(버퍼 시간 이내)에 공격 입력이 있었다면 콤보를 이어간다.
+    // 시네마틱이 콤보를 막아 둔 동안(Player.IsComboBlocked)에는 이어가지 않고 그 타의 마무리 동작으로 끝낸다.
     private bool CanContinueCombo()
     {
         bool hasNextCombo = _comboIndex < owner.ComboCount - 1;
 
-        if (!hasNextCombo || !owner.Movement.IsGrounded)
+        if (!hasNextCombo || !owner.Movement.IsGrounded || owner.IsComboBlocked)
         {
             return false;
         }

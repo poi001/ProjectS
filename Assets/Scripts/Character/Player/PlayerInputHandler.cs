@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 // 버퍼: 입력이 조금 일찍 들어와도 버퍼 시간 안에 실행 가능해지면 처리되도록 마지막 입력 시각을 기억한다.
 // 입력 잠금(SetLocked): 시네마틱처럼 조작을 받지 않아야 할 때 켠다. 잠근 동안 이동 입력은 0으로 읽히고 점프/공격/대시 입력은 버려진다.
 // 키 입력 자체는 계속 받아 두므로, 방향키를 누른 채로 잠금이 풀리면 다시 누르지 않아도 바로 움직인다.
+// 잠근 채로 공격만 허용(SetAttackAllowedWhileLocked): 잠금 중에도 공격 입력만 받는다. 이동·점프·대시는 그대로 막힌다. (Mushroom 반응속도 기믹)
 public class PlayerInputHandler : MonoBehaviour
 {
     [Header("입력 버퍼")]
@@ -23,6 +24,8 @@ public class PlayerInputHandler : MonoBehaviour
 
     // 입력 잠금 여부. 잠근 동안에는 어떤 조작도 받지 않는다.
     public bool IsLocked { get; private set; }
+    // 잠근 동안에도 공격 입력은 받을지 여부. 잠겨 있지 않으면 의미가 없다.
+    public bool AllowsAttackWhileLocked { get; private set; }
 
     public float MoveInput => IsLocked ? 0f : _rawMoveInput;
 
@@ -84,6 +87,22 @@ public class PlayerInputHandler : MonoBehaviour
         }
     }
 
+    // 잠근 동안에도 공격 입력을 받을지 정한다. 끄는 순간 잠겨 있다면 버퍼에 남은 공격 입력을 버려, 뒤늦게 실행되지 않게 한다.
+    public void SetAttackAllowedWhileLocked(bool isAllowed)
+    {
+        if (AllowsAttackWhileLocked == isAllowed)
+        {
+            return;
+        }
+
+        AllowsAttackWhileLocked = isAllowed;
+
+        if (!isAllowed && IsLocked)
+        {
+            ConsumeAttackBuffer();
+        }
+    }
+
     // 점프 입력을 소비한다. 한 번의 입력으로 중복 점프하지 않도록 한다.
     public void ConsumeJumpBuffer()
     {
@@ -131,7 +150,7 @@ public class PlayerInputHandler : MonoBehaviour
 
     private void OnAttack(InputAction.CallbackContext context)
     {
-        if (IsLocked)
+        if (IsLocked && !AllowsAttackWhileLocked)
         {
             return;
         }

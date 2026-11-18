@@ -91,11 +91,23 @@ public class CinematicManager : MonoBehaviour
 
         _isPlaying = true;
         float currentSize = StopAndKeepSize(_exitFeedbacks);
-        _focusPoint.position = GetFocusPosition(cinematicEvent.FocusTarget);
+        float zoomedSize = _zoomedOrthographicSize;
+
+        if (cinematicEvent.HasCustomFraming)
+        {
+            // 여는 쪽이 정한 구도를 그대로 쓴다. 원래 화면 밖이 보이지 않게 하는 제한은 적용하지 않는다. (검은 띠가 가리는 범위까지 여는 쪽이 계산한다)
+            Vector2 center = cinematicEvent.FramingCenter;
+            _focusPoint.position = new Vector3(center.x, center.y, _homePosition.z);
+            zoomedSize = cinematicEvent.FramingOrthographicSize;
+        }
+        else
+        {
+            _focusPoint.position = GetFocusPosition(cinematicEvent.FocusTarget);
+        }
 
         // 지금 크기에서 줌 크기로. (복귀 중에 다시 시작한 경우를 위해 현재 크기에서 시작한다)
         _enterZoom.RemapOrthographicSizeZero = currentSize;
-        _enterZoom.RemapOrthographicSizeOne = Mathf.Min(_zoomedOrthographicSize, _homeOrthographicSize);
+        _enterZoom.RemapOrthographicSizeOne = Mathf.Min(zoomedSize, _homeOrthographicSize);
 
         _enterFeedbacks.PlayFeedbacks();
     }
@@ -112,6 +124,15 @@ public class CinematicManager : MonoBehaviour
         // 씬이 닫히는 중에 보스가 Release되며 시네마틱을 닫는 경우, 카메라가 먼저 파괴되어 있을 수 있다. 되돌릴 대상이 없으므로 끝낸다.
         if (_camera == null)
         {
+            return;
+        }
+
+        // KO 연출이 카메라를 이어받는 경우에는 건드리지 않는다. 여기서 되돌리면 KO의 줌인과 서로 다른 쪽으로 카메라를 움직이게 된다.
+        // 카메라는 KO 연출이 끝나며 원래 위치·크기로 돌아간다. (KOEffectManager)
+        // 줌인이 아직 진행 중이었다면(시작 직후에 죽은 경우) 그 줌인만 멈춰, KO의 줌인과 동시에 카메라를 움직이지 않게 한다. 크기와 위치는 멈춘 자리 그대로 둔다.
+        if (cinematicEvent.KeepsCamera)
+        {
+            StopAndKeepSize(_enterFeedbacks);
             return;
         }
 
