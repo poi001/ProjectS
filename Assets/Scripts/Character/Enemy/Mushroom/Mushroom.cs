@@ -8,7 +8,7 @@ using UnityEngine;
 //  - 발사(LaunchReady → Launch): 준비 동작 뒤, 준비 도중에 기억해 둔 플레이어 위치(공중 포함)까지 일직선으로 날아간다. 끝나면 점프(뛸 수 있을 때만) 또는 점프공격.
 //  - 점프(Jump): 제자리에서 위로 뛰어오른다. 처음에는 빠르고 갈수록 느려진다. 끝나면 점프공격, 또는 공중점프가 남아 있으면 한 번 더 점프한다.
 //    공중에서 시작한 점프는 공중점프다. (높이·시간이 다르고 공중점프 횟수를 쓴다) 공중점프 횟수는 땅에 닿으면 다시 채운다.
-//  - 점프공격(JumpAttack): 그 자리에 멈춘 준비 동작 뒤, 준비 도중에 기억해 둔 플레이어 쪽으로 벽이나 땅에 닿을 때까지 계속 돌진한다. 끝나면 Idle.
+//  - 점프공격(JumpAttack): 그 자리에 멈춘 준비 동작 뒤, 준비 도중에 기억해 둔 플레이어 쪽으로 벽·땅·천장에 닿을 때까지 계속 돌진한다. 끝나면 Idle.
 // 런·발사·점프공격으로 움직이는 동안 몸에 닿은 플레이어가 피해를 입는다. (한 번의 패턴에서 한 번만)
 // 패턴이 공중에서 끝나 Idle로 가야 하면 먼저 떨어져서(Fall) 착지한 뒤 Idle로 쉰다.
 // 패턴 게이지: Gauge Fill Duration(25초)에 걸쳐 저절로 차고, 몸 판정(점프공격 충격파 포함)으로 플레이어를 맞힐 때마다 Hit Gauge Gain Ratio(10%)만큼 더 찬다.
@@ -30,8 +30,6 @@ public class Mushroom : Enemy
     // 닿은 면이 움직이는 방향을 이 값보다 더 마주 볼 때만 막힌 것으로 본다. (면의 법선과 이동 방향의 내적, 0이면 스치는 면)
     // 바닥을 따라 가로로 움직일 때의 발밑 바닥(내적 0)만 걸러 내도록 0에 가깝게 둔다. 공중에서 완만하게 내려오다 바닥에 닿는 것은 막힌 것이다.
     private const float BlockingNormalDot = -0.001f;
-    // 위쪽으로 움직이는 정도가 이 값 이하면 화면 위쪽 끝을 확인하지 않는다. (이동 방향의 y 성분)
-    private const float MinUpwardDirection = 0.001f;
     // 전투 시작 때 양쪽 벽을 찾는 최대 거리 (단위: 월드 거리)
     private const float WallSearchDistance = 100f;
     // 조준점이 벽에 붙을 때, 몸 콜라이더 가장자리와 벽 사이에 남기는 간격. 벽에 붙은 플레이어를 겨눠도 몸이 벽에 먼저 걸리지 않게 한다. (단위: 월드 거리)
@@ -118,19 +116,19 @@ public class Mushroom : Enemy
     [SerializeField, Min(0f)] private float _jumpAttackReadyDuration = 0.5f;
     [Tooltip("점프공격의 준비가 얼마나 진행됐을 때 플레이어 위치를 기억할지 정합니다. 그 위치를 향해 돌진합니다. 0이면 준비를 시작하는 순간, 0.5면 준비 시간의 절반이 지났을 때, 1이면 준비가 끝나는 순간입니다. (0~1)")]
     [SerializeField, Range(0f, 1f)] private float _jumpAttackAimTimeRatio = 0.5f;
-    [Tooltip("점프공격으로 플레이어 쪽으로 돌진하는 속도입니다. 벽이나 땅에 닿을 때까지 일정합니다. 기획이 정해지기 전의 임시값입니다. (단위: 월드 거리/초)")]
+    [Tooltip("점프공격으로 플레이어 쪽으로 돌진하는 속도입니다. 벽·땅·천장에 닿을 때까지 일정합니다. 기획이 정해지기 전의 임시값입니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0.1f)] private float _jumpAttackSpeed = 30f;
-    [Tooltip("점프공격이 벽이나 땅에 닿지 못하는 예외 상황에서 돌진을 끝내는 최대 시간입니다. (단위: 초)")]
+    [Tooltip("점프공격이 벽·땅·천장에 닿지 못하는 예외 상황에서 돌진을 끝내는 최대 시간입니다. (단위: 초)")]
     [SerializeField, Min(0.1f)] private float _jumpAttackMaxDuration = 2f;
     [Tooltip("돌진하는 동안 몸에 닿은 플레이어가 입는 피해의 공격력 배율입니다. 피해량 = 스탯의 공격력 x 이 값. 한 번의 점프공격에서 한 번만 맞습니다. 기획이 정해지기 전의 임시값입니다.")]
     [SerializeField, Min(0f)] private float _jumpAttackDamageMultiplier = 1f;
-    [Tooltip("돌진하는 동안(JumpAttack 클립의 앞 3장) 그림을 뒤쪽(돌진 반대쪽)으로 옮기는 거리입니다. 이 그림들은 칸의 앞쪽에 치우쳐 그려져 있어, 옮기지 않으면 몸 충돌 판정보다 앞에 보입니다. 벽이나 땅에 닿으면 원래 자리로 돌아갑니다. (단위: 월드 거리)")]
+    [Tooltip("돌진하는 동안(JumpAttack 클립의 앞 3장) 그림을 뒤쪽(돌진 반대쪽)으로 옮기는 거리입니다. 이 그림들은 칸의 앞쪽에 치우쳐 그려져 있어, 옮기지 않으면 몸 충돌 판정보다 앞에 보입니다. 벽·땅·천장에 닿으면 원래 자리로 돌아갑니다. (단위: 월드 거리)")]
     [SerializeField] private float _jumpAttackSpriteOffsetX = 1.25f;
-    [Tooltip("점프공격이 벽이나 땅에 부딪혔을 때 재생하는 피드백입니다. (카메라 흔들림, SkullDog 벽 충돌·Knight 슬라이딩·BloodWing 대시 충돌과 같은 값) 루트 VFX/Impact/ImpactFeedbacks의 MMF_Player를 연결합니다.\n화면 위쪽 끝에서 멈추거나 시간이 다 되어 끝날 때는 재생하지 않습니다. 비워 두면 흔들리지 않습니다.")]
+    [Tooltip("점프공격이 벽·땅·천장에 부딪혔을 때 재생하는 피드백입니다. (카메라 흔들림, SkullDog 벽 충돌·Knight 슬라이딩·BloodWing 대시 충돌과 같은 값) 루트 VFX/Impact/ImpactFeedbacks의 MMF_Player를 연결합니다.\n시간이 다 되어 끝날 때는 재생하지 않습니다. 비워 두면 흔들리지 않습니다.")]
     [SerializeField] private MMF_Player _impactFeedbacks;
-    [Tooltip("점프공격이 벽이나 땅에 부딪혔을 때 재생할 효과음 데이터입니다. (Knight 드롭킥·SoulKnight 슬라이딩 벽 충돌과 같은 Assets/Data/Sound/DropKickImpact_Knight) SoundManager의 Sfx 채널로 재생하며, 위 피드백과 같은 때 재생합니다.\n비워 두면 소리 없이 진행합니다.")]
+    [Tooltip("점프공격이 벽·땅·천장에 부딪혔을 때 재생할 효과음 데이터입니다. (Knight 드롭킥·SoulKnight 슬라이딩 벽 충돌과 같은 Assets/Data/Sound/DropKickImpact_Knight) SoundManager의 Sfx 채널로 재생하며, 위 피드백과 같은 때 재생합니다.\n비워 두면 소리 없이 진행합니다.")]
     [SerializeField] private SoundDataSO _impactSound;
-    [Tooltip("점프공격이 벽이나 땅에 부딪힌 자리에 띄우는 충격파 효과 프리팹입니다. Assets/Prefabs/FX/Mushroom/MushroomJumpAttackImpact(pixelFX heavy-landing을 절반 크기로 둔 프리팹 변형)를 연결합니다. 부딪힌 면 쪽으로 회전해 벽이면 옆으로 퍼집니다.\n비워 두면 효과는 나오지 않지만 충격파 판정은 그대로 나갑니다.")]
+    [Tooltip("점프공격이 벽·땅·천장에 부딪힌 자리에 띄우는 충격파 효과 프리팹입니다. Assets/Prefabs/FX/Mushroom/MushroomJumpAttackImpact(pixelFX heavy-landing을 절반 크기로 둔 프리팹 변형)를 연결합니다. 부딪힌 면 쪽으로 회전해 벽이면 옆으로, 천장이면 아래로 퍼집니다.\n비워 두면 효과는 나오지 않지만 충격파 판정은 그대로 나갑니다.")]
     [SerializeField] private GameObject _impactWavePrefab;
     [Tooltip("충격파 판정이 살아 있는 시간입니다. 효과의 고리가 퍼지는 시간(0.33초)에 맞춰 두었습니다. 그 뒤에 남는 먼지에는 피해가 없습니다. (단위: 초)")]
     [SerializeField, Min(0.01f)] private float _impactWaveDuration = 0.33f;
@@ -190,7 +188,7 @@ public class Mushroom : Enemy
     private readonly RaycastHit2D[] _castResults = new RaycastHit2D[MaxCastCount];
     // 남은 공중점프 횟수. 땅에 닿아 있는 동안 Air Jump Count로 다시 채운다.
     private int _remainingAirJumps;
-    // 메인 카메라. 천장이 없는 맵에서 위로 날아가는 점프공격을 화면 위쪽 끝에서 멈추려고 매 물리 스텝 화면 위쪽 끝 높이를 읽는 데 쓴다.
+    // 메인 카메라. 반응속도 기믹의 자리 배치(화면 비율)와 충격 프레임 효과의 크기를 맞추는 데 쓴다.
     private Camera _mainCamera;
     // 메인 카메라를 찾지 못했다는 경고를 한 번만 내기 위한 표시
     private bool _hasWarnedNoCamera;
@@ -442,7 +440,7 @@ public class Mushroom : Enemy
         }
     }
 
-    // 점프공격이 벽이나 땅에 부딪혔을 때 MushroomJumpAttackState가 호출한다. 효과음과 피드백(카메라 흔들림)을 재생한다.
+    // 점프공격이 벽·땅·천장에 부딪혔을 때 MushroomJumpAttackState가 호출한다. 효과음과 피드백(카메라 흔들림)을 재생한다.
     public void PlayImpactFeedbacks()
     {
         if (_impactSound != null && SoundManager.HasInstance)
@@ -456,9 +454,9 @@ public class Mushroom : Enemy
         }
     }
 
-    // 점프공격이 벽이나 땅에 부딪혔을 때 MushroomJumpAttackState가 호출한다. 부딪힌 자리에 충격파 효과(pixelFX heavy-landing)를 띄우고
+    // 점프공격이 벽·땅·천장에 부딪혔을 때 MushroomJumpAttackState가 호출한다. 부딪힌 자리에 충격파 효과(pixelFX heavy-landing)를 띄우고
     // 같은 범위의 판정을 Impact Wave Duration 동안 낸다. (UpdateImpactWave) 효과와 판정은 Mushroom을 따라가지 않고 그 자리에 남는다.
-    // contactNormal: 부딪힌 면의 법선(면에서 바깥쪽). 가장 가까운 축(땅이면 위, 벽이면 옆)으로 맞춘 뒤, 효과의 위쪽이 그 방향을 향하도록 돌린다.
+    // contactNormal: 부딪힌 면의 법선(면에서 바깥쪽). 가장 가까운 축(땅이면 위, 벽이면 옆, 천장이면 아래)으로 맞춘 뒤, 효과의 위쪽이 그 방향을 향하도록 돌린다.
     // 원점은 몸 콜라이더에서 그 면에 맞닿은 쪽 가장자리의 가운데다. (땅이면 발밑 가운데, 왼쪽 벽이면 몸 왼쪽 가운데)
     public void StartImpactWave(Vector2 contactNormal)
     {
@@ -976,33 +974,6 @@ public class Mushroom : Enemy
         return true;
     }
 
-    // direction(단위 벡터)으로 움직일 때 몸 콜라이더의 위쪽 끝이 화면 위쪽 끝에 닿기까지 갈 수 있는 거리.
-    // 위로 움직이지 않거나 카메라가 없으면 제한이 없다(무한대). 이미 화면 위쪽 끝을 넘어 있으면 0이다.
-    // 맵에 천장이 없어서, 위로 향한 점프공격이 화면 밖으로 날아가 버리지 않게 하는 데 쓴다.
-    // 화면 위쪽 끝은 매번 카메라에서 읽는다. (전투 시작 때 한 번 저장한 값이 어긋나도 제한이 풀리지 않게)
-    public float GetDistanceToScreenTop(Vector2 direction)
-    {
-        if (direction.y <= MinUpwardDirection || !TryGetScreenTopY(out float screenTopY))
-        {
-            return float.PositiveInfinity;
-        }
-
-        return Mathf.Max(0f, (screenTopY - BodyCollider.bounds.max.y) / direction.y);
-    }
-
-    // 지금 메인 카메라가 비추는 화면의 위쪽 끝 높이를 구한다. 카메라를 찾지 못하면 false다.
-    private bool TryGetScreenTopY(out float screenTopY)
-    {
-        if (!TryGetMainCamera(out Camera mainCamera))
-        {
-            screenTopY = float.PositiveInfinity;
-            return false;
-        }
-
-        screenTopY = mainCamera.transform.position.y + mainCamera.orthographicSize;
-        return true;
-    }
-
     // 메인 카메라(MainCamera 태그)를 구한다. 전투 시작 때 찾지 못했으면 다시 찾고, 그래도 없으면 경고를 한 번 남기고 false를 반환한다.
     private bool TryGetMainCamera(out Camera mainCamera)
     {
@@ -1014,7 +985,7 @@ public class Mushroom : Enemy
         if (_mainCamera == null && !_hasWarnedNoCamera)
         {
             _hasWarnedNoCamera = true;
-            Debug.LogWarning("Mushroom: 메인 카메라(MainCamera 태그)를 찾지 못했습니다. 점프공격을 화면 위쪽 끝에서 멈출 수 없고, 기믹의 자리 배치는 16:9 화면을 가정합니다.", this);
+            Debug.LogWarning("Mushroom: 메인 카메라(MainCamera 태그)를 찾지 못했습니다. 기믹의 자리 배치는 16:9 화면을 가정하고, 충격 프레임 효과의 크기를 맞추지 않습니다.", this);
         }
 
         mainCamera = _mainCamera;

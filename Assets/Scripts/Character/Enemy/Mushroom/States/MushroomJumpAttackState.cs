@@ -4,12 +4,11 @@ using UnityEngine;
 //  - 준비: JumpAttackReadyDuration(0.5초) 동안 그 자리(공중이면 공중)에 멈춘 채 플레이어 쪽을 본다. 그림은 직전 그림(점프·발사의 마지막 그림)을 유지한다.
 //    점프 꼭대기에서 멈춰 기다리는 시간도 이 준비다. 플레이어가 보고 피할 시간을 준다. 준비 중에는 몸에 닿아도 피해가 없다.
 //  - 조준: 준비의 절반(JumpAttackAimTime)이 지났을 때의 플레이어 위치를 기억한다. 그 뒤에 플레이어가 움직여도 돌진 방향은 바뀌지 않는다.
-//  - 돌진: 발사와 달리 그 위치에서 멈추지 않고, 그 방향으로 벽이나 땅에 닿을 때까지 계속 날아간다. 돌진하는 동안 중력을 끈다.
-//    맵에 천장이 없으므로, 위로 향해 날아갈 때는 화면 위쪽 끝에 닿아도 멈춘다. (Mushroom.GetDistanceToScreenTop)
+//  - 돌진: 발사와 달리 그 위치에서 멈추지 않고, 그 방향으로 벽·땅·천장(천장도 Wall 레이어)에 닿을 때까지 계속 날아간다. 돌진하는 동안 중력을 끈다.
 //    어디에도 닿지 못하는 예외 상황에는 JumpAttackMaxDuration이 지나면 끝난다.
 //  - 돌진하는 동안 플레이어가 몸에 닿으면 피해를 입는다. 한 번의 점프공격에서 한 번만 맞는다. (플레이어와는 서로 관통한다)
-// 벽이나 땅에 닿으면 그 자리에 멈춰 마무리 그림을 재생하고 카메라를 흔든다. (Mushroom.PlayImpactFeedbacks, 화면 위쪽 끝이나 시간 초과로 멈출 때는 흔들지 않는다)
-//  부딪힌 자리에는 충격파(pixelFX heavy-landing, 벽이면 옆으로 돌림)가 터지고, 고리가 퍼지는 동안 같은 범위에 피해 판정이 나간다. (Mushroom.StartImpactWave)
+// 벽·땅·천장에 닿으면 그 자리에 멈춰 마무리 그림을 재생하고 카메라를 흔든다. (Mushroom.PlayImpactFeedbacks, 시간 초과로 멈출 때는 흔들지 않는다)
+//  부딪힌 자리에는 충격파(pixelFX heavy-landing, 벽이면 옆으로, 천장이면 아래로 돌림)가 터지고, 고리가 퍼지는 동안 같은 범위에 피해 판정이 나간다. (Mushroom.StartImpactWave)
 //  충격파는 몸통과 판정 기록을 함께 써서, 한 번의 점프공격에서 둘 중 하나에만 맞는다.
 // 벽에 닿아 공중에서 멈췄다면 중력으로 떨어진다. 마무리에는 피해가 없다.
 // 마무리 그림이 끝나면 Idle로 쉰다. (공중이면 떨어져서 착지한 뒤, Mushroom.ChangeToRest)
@@ -32,13 +31,11 @@ public class MushroomJumpAttackState : MushroomState
     private Vector2 _direction;
     // 돌진하는 가로 방향 (오른쪽 1, 왼쪽 -1). 보는 방향과 몸 판정 범위의 좌우를 정한다.
     private float _facing;
-    // 이번 물리 스텝으로 벽·땅(또는 화면 위쪽 끝)에 닿는 자리까지 옮겼는지. 다음 스텝에 닿은 것으로 처리한다.
+    // 이번 물리 스텝으로 벽·땅·천장에 닿는 자리까지 옮겼는지. 다음 스텝에 닿은 것으로 처리한다.
     private bool _isArriving;
-    // 다음 스텝에 닿는 것이 벽·땅인지(화면 위쪽 끝이 아니라). 닿을 때 카메라를 흔들지 정한다.
-    private bool _isHittingTerrain;
-    // 다음 스텝에 닿는 벽·땅 면의 법선(면에서 바깥쪽). 충격파의 방향을 정한다.
+    // 다음 스텝에 닿는 벽·땅·천장 면의 법선(면에서 바깥쪽). 충격파의 방향을 정한다.
     private Vector2 _hitNormal;
-    // 벽·땅에 닿아 멈춘 뒤인지 여부
+    // 벽·땅·천장에 닿았거나 시간이 다 되어 멈춘 뒤인지 여부
     private bool _hasImpacted;
 
     public MushroomJumpAttackState(Mushroom owner, StateMachine<Enemy> stateMachine)
@@ -52,7 +49,6 @@ public class MushroomJumpAttackState : MushroomState
         _hasAim = false;
         _isDashing = false;
         _isArriving = false;
-        _isHittingTerrain = false;
         _hitNormal = Vector2.up;
         _hasImpacted = false;
 
@@ -142,26 +138,20 @@ public class MushroomJumpAttackState : MushroomState
 
         if (_isArriving || Time.time - _dashStartTime >= mushroom.JumpAttackMaxDuration)
         {
-            Impact(_isArriving && _isHittingTerrain);
+            Impact(_isArriving);
             return;
         }
 
-        // 이번 스텝에 벽·땅이나 화면 위쪽 끝에 닿으면 그 자리까지만 옮기고, 다음 스텝에 닿은 것으로 처리한다.
+        // 이번 스텝에 벽·땅·천장에 닿으면 그 자리까지만 옮기고, 다음 스텝에 닿은 것으로 처리한다.
         float stepDistance = mushroom.JumpAttackSpeed * Time.fixedDeltaTime;
-        float screenTopDistance = mushroom.GetDistanceToScreenTop(_direction);
-        bool isBlocked = screenTopDistance <= stepDistance;
-        stepDistance = Mathf.Min(stepDistance, screenTopDistance);
+        _isArriving = mushroom.CastBody(_direction, stepDistance, out float freeDistance, out Vector2 hitNormal);
 
-        _isHittingTerrain = mushroom.CastBody(_direction, stepDistance, out float freeDistance, out Vector2 hitNormal);
-
-        if (_isHittingTerrain)
+        if (_isArriving)
         {
             _hitNormal = hitNormal;
-            isBlocked = true;
         }
 
         mushroom.Movement.SetVelocity(_direction * (freeDistance / Time.fixedDeltaTime));
-        _isArriving = isBlocked;
     }
 
     // 지금 플레이어의 위치를 기억한다. 보는 방향은 바꾸지 않는다. (준비를 시작할 때 플레이어 쪽을 봤고, 돌진할 때 돌진하는 쪽을 본다)
@@ -202,8 +192,8 @@ public class MushroomJumpAttackState : MushroomState
         mushroom.PlaySpeedLines(_direction);
     }
 
-    // 벽·땅(또는 화면 위쪽 끝)에 닿았을 때: 그 자리에 멈추고 중력을 되돌린 뒤 마무리 그림을 재생한다.
-    // hasHitTerrain: 벽이나 땅에 부딪혔는지. 그렇다면 카메라를 흔든다.
+    // 벽·땅·천장에 닿았거나 시간이 다 되었을 때: 그 자리에 멈추고 중력을 되돌린 뒤 마무리 그림을 재생한다.
+    // hasHitTerrain: 벽·땅·천장에 부딪혔는지. 그렇다면 카메라를 흔들고 충격파를 낸다. (시간 초과면 false)
     private void Impact(bool hasHitTerrain)
     {
         _hasImpacted = true;
