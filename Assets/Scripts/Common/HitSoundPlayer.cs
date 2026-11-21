@@ -3,6 +3,8 @@ using UnityEngine;
 // 이 캐릭터가 피해를 입을 때 피격음을 재생한다. 피해를 입는 캐릭터(Knight 등)의 프리팹 루트에 붙인다.
 // 같은 오브젝트의 CharacterVital.Damaged 이벤트를 구독하므로 대상 필터링이 필요 없고, 캐릭터마다 SoundDataSO만 바꿔 끼우면 된다.
 // 치명 일격도 피격음을 재생하되, 일반 피격음을 생략할 게이지가 꽉 차 있으면 재생하지 않는다.
+// 단, 페이즈를 끝내는 일격(체력을 모두 잃었지만 다음 페이즈로 넘어가는 피격)은 게이지가 꽉 차 있어도 재생한다.
+// 이 일격으로는 기절하지 않고(기절음 없음) 사망도 아니라서(KO 사운드 없음) 생략하면 소리가 하나도 나지 않기 때문이다. 페이즈가 둘 이상인 보스에 모두 적용된다.
 // 피해 무효 중에 맞으면(CharacterVital.DamageNullified) 일반 피격음 대신 피해 무효 피격음을 재생한다.
 [RequireComponent(typeof(CharacterVital))]
 public class HitSoundPlayer : MonoBehaviour
@@ -59,7 +61,10 @@ public class HitSoundPlayer : MonoBehaviour
             return;
         }
 
-        if (_isGaugeMuteEnabled && _muteWhenGaugeFull != null && _muteWhenGaugeFull.IsFull)
+        // 이 피격으로 체력을 모두 잃었지만 다음 페이즈가 남아 있는지. (Damaged는 소진 상태가 시작되기 전에 호출되므로 이때 IsDead가 true다)
+        bool endsPhase = _vital.IsDead && _vital.SurvivesDepletion;
+
+        if (!endsPhase && _isGaugeMuteEnabled && _muteWhenGaugeFull != null && _muteWhenGaugeFull.IsFull)
         {
             return;
         }
