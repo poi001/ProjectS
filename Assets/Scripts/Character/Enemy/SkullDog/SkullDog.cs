@@ -2,16 +2,22 @@ using MoreMountains.Feedbacks;
 using UnityEngine;
 
 // SkullDog(스컬독) 보스. 1페이즈만 있는 지상형 보스다.
-// 흐름: Idle → (무작위) 대시 준비(DashReady) → 대시(Dash) → 대시 마무리(DashEnd) → Idle,
+// 흐름: Idle → (무작위) 대시 준비(DashReady) → 대시(Dash) → 대시 마무리(DashEnd) → (무작위) 대시 준비 또는 Idle,
 //       또는 런(Run) → 벽 충돌 → 스턴(Stun) → Idle
 //  - 대시: 준비를 시작하는 순간의 플레이어 위치를 기억해 두고, 준비가 끝나면 그 자리로 빠르게 일직선 돌진한다.
-//    플레이어가 공중에 있었다면 공중으로 돌진하고, 도착하면 그 자리에서 중력으로 떨어진다. 돌진하는 동안 몸에 닿은 플레이어가 피해를 입는다. (한 번의 대시에서 한 번만)
+//    플레이어가 공중에 있었다면 공중으로 돌진한다. 돌진하는 동안 몸에 닿은 플레이어가 피해를 입는다. (한 번의 대시에서 한 번만)
+//    대시가 끝나면 Dash Chain Chance 확률로 Idle 없이 이어서 대시한다. (첫 대시 포함 최대 Max Dash Chain번)
+//    이어서 대시할 때는 끝난 자리(공중이면 공중)에서 중력 없이 떠 있는 채로 준비 자세부터 다시 한다.
+//    이어서 대시하지 않으면 그 자리에서 중력으로 떨어지고, 착지하면 Idle로 쉬어간다.
 //  - 런: 플레이어가 있는 쪽으로 벽에 부딪힐 때까지 계속 달린다. 처음에는 느리고 시간이 지날수록 빨라진다.
 //    시작하고 Run Grace Duration(0.5초) 동안은 벽에 닿아도 스턴에 걸리지 않고 플레이어도 피해를 입지 않는다.
 //    플레이어가 반대쪽으로 넘어가면 바로 돌아서지 못하고 미끄러지며 속도를 줄인 뒤 돌아선다. (관성)
 //    달리는 동안 몸에 닿은 플레이어가 피해를 입는다. 플레이어의 피격 무적 시간이 끝난 뒤에도 닿아 있으면 다시 맞는다.
 //  - 스턴: 런으로 벽에 부딪히면 걸린다. 부딪힌 순간의 속도가 빠를수록 오래 기절한다.
-// 패턴 게이지는 쓰지 않는다.
+//  - 패턴 게이지: 사망 전까지 상태와 상관없이 Gauge Fill Duration(20초)에 걸쳐 0%에서 100%까지 일정하게 찬다.
+//    꽉 차면 게이지 UI가 튕기고 푸른색으로 깜빡인다. (공통 PatternGaugeBar의 꽉 참 강조)
+//    꽉 찬 채로 Idle에 들어갔을 때 발동할 기믹은 아직 정하지 않았다. 지금은 꽉 찬 채로 머문다.
+[RequireComponent(typeof(PatternGauge))]
 public class SkullDog : Enemy
 {
     private const string GroundLayerName = "Ground";
@@ -44,6 +50,10 @@ public class SkullDog : Enemy
     [SerializeField, Min(0.1f)] private float _dashMaxDuration = 1f;
     [Tooltip("돌진 중 몸에 닿은 플레이어가 입는 피해의 공격력 배율입니다. 피해량 = 스탯의 공격력 x 이 값. 한 번의 대시에서 한 번만 맞습니다. 기획이 정해지기 전의 임시값입니다.")]
     [SerializeField, Min(0f)] private float _dashDamageMultiplier = 1f;
+    [Tooltip("대시가 끝났을 때 Idle로 쉬지 않고 이어서 한 번 더 대시할 확률입니다. 0이면 항상 Idle, 1이면 최대 횟수까지 항상 이어서 대시하고, 나머지 경우는 Idle입니다. 이어서 하는 대시는 끝난 자리(공중이면 공중)에서 중력 없이 떠 있는 채로 준비 자세부터 다시 합니다. 기획이 정해지기 전의 임시값입니다. (0~1)")]
+    [SerializeField, Range(0f, 1f)] private float _dashChainChance = 0.5f;
+    [Tooltip("Idle 없이 연속으로 쓸 수 있는 대시의 최대 횟수입니다. 첫 대시를 포함합니다. 이 횟수만큼 대시하면 이어서 대시하지 않고 떨어져서 Idle로 갑니다. (단위: 번)")]
+    [SerializeField, Min(1)] private int _maxDashChain = 3;
     [Tooltip("대시 속도선 효과의 회전 기준입니다. Visuals/MirroredVFX/Dash/DashLines를 연결합니다. 돌진하는 동안 돌진 방향으로 기울입니다. 켜고 끄는 것은 아래 두 피드백이 맡습니다.\n비워 두면 기울이지 않습니다.")]
     [SerializeField] private Transform _dashLines;
     [Tooltip("돌진을 시작할 때 속도선을 켜는 피드백입니다. Visuals/MirroredVFX/Dash/DashLines_Enter의 MMF_Player를 연결합니다.\n비워 두면 속도선이 나오지 않습니다.")]
@@ -65,6 +75,10 @@ public class SkullDog : Enemy
     [Tooltip("런을 시작한 직후의 유예 시간입니다. 이 시간 동안에는 벽에 닿아도 스턴에 걸리지 않고(벽 쪽으로는 가지 못한 채 속도가 쌓이지 않습니다) 몸에 닿은 플레이어도 피해를 입지 않습니다. 시간이 지나면 벽 충돌과 몸 충돌 판정이 정상으로 들어갑니다. 벽에 붙은 채 런이 나왔을 때 바로 스턴에 걸리는 것을 막습니다. 0이면 유예 없이 시작합니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _runGraceDuration = 0.5f;
 
+    [Header("패턴 게이지")]
+    [Tooltip("패턴 게이지가 0%에서 100%까지 차는 데 걸리는 시간입니다. 사망 전까지 상태와 상관없이 일정하게 찹니다. 꽉 차면 게이지 UI가 푸른색으로 깜빡입니다. (단위: 초)")]
+    [SerializeField, Min(0.01f)] private float _gaugeFillDuration = 20f;
+
     [Header("스턴")]
     [Tooltip("런을 시작할 때의 속도(Run Start Speed) 이하로 벽에 부딪혔을 때의 스턴 시간입니다. 기획이 정해지기 전의 임시값입니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _stunMinDuration = 1f;
@@ -78,6 +92,8 @@ public class SkullDog : Enemy
     // 돌진을 멈추는 지형(바닥, 벽)을 찾는 조건
     private ContactFilter2D _obstacleFilter;
     private readonly RaycastHit2D[] _castResults = new RaycastHit2D[MaxCastCount];
+    // Idle 없이 이어진 이번 연속 대시에서 지금까지 돌진한 횟수. Idle에서 대시를 고를 때 0으로 되돌린다.
+    private int _dashChainCount;
 
     public SkullDogDashReadyState DashReadyState { get; private set; }
     public SkullDogDashState DashState { get; private set; }
@@ -154,6 +170,17 @@ public class SkullDog : Enemy
         base.OnRelease();
     }
 
+    // 패턴 게이지를 채운다. Gauge Fill Duration에 걸쳐 0%에서 100%까지 일정하게 차고, 꽉 차면 더 오르지 않는다. 죽은 뒤에는 차지 않는다.
+    protected override void OnUpdate()
+    {
+        if (Vital.IsDead)
+        {
+            return;
+        }
+
+        PatternGauge.Add(PatternGauge.MaxValue / _gaugeFillDuration * Time.deltaTime);
+    }
+
     protected override void CreateStates()
     {
         base.CreateStates();
@@ -170,6 +197,7 @@ public class SkullDog : Enemy
     {
         if (Random.value < _dashChance)
         {
+            _dashChainCount = 0;
             stateMachine.ChangeState(DashReadyState);
         }
         else
@@ -252,6 +280,19 @@ public class SkullDog : Enemy
 
         freeDistance = Mathf.Clamp(nearest - CastShrink - CastContactSkin, 0f, distance);
         return true;
+    }
+
+    // 돌진을 시작할 때 SkullDogDashState가 호출한다. 이번 연속 대시에서 몇 번째 돌진인지 센다.
+    public void CountDash()
+    {
+        _dashChainCount++;
+    }
+
+    // 대시가 끝났을 때 SkullDogDashEndState가 호출한다. Idle로 쉬지 않고 이어서 대시할지 Dash Chain Chance 확률로 고른다.
+    // 이번 연속 대시에서 이미 Max Dash Chain번 돌진했으면 항상 false다.
+    public bool RollDashChain()
+    {
+        return _dashChainCount < _maxDashChain && Random.value < _dashChainChance;
     }
 
     // 돌진을 시작할 때 SkullDogDashState가 호출한다. 속도선을 돌진 방향(direction, 단위 벡터)으로 기울이고 켠다.

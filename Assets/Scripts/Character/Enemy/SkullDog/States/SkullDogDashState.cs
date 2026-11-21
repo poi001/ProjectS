@@ -1,7 +1,8 @@
 using UnityEngine;
 
 // 대시(돌진 몸통박치기). 준비 자세가 기억해 둔 플레이어 위치(SetAimPoint)까지 일정한 속도(DashSpeed)로 일직선 돌진한다.
-// 플레이어가 공중에 있었다면 공중으로 날아간다. 돌진하는 동안 중력을 끄고, 그 자리에 도착하면 대시 마무리(DashEnd)로 넘어가 중력으로 떨어진다.
+// 플레이어가 공중에 있었다면 공중으로 날아간다. 돌진하는 동안 중력을 끄고, 그 자리에 도착하면 대시 마무리(DashEnd)로 넘어간다.
+// (마무리에서 이어서 대시하면 그 자리에 떠 있고, 아니면 중력으로 떨어진다) 들어올 때마다 연속 대시 횟수를 하나 센다. (SkullDog.CountDash)
 // 가는 길에 벽·바닥에 막히면 그 자리에서 끝난다. 막히지도 도착하지도 못하는 예외 상황에는 DashMaxDuration이 지나면 끝난다.
 // 돌진하는 동안 플레이어가 몸에 닿으면 피해를 입는다. 한 번의 대시에서 한 번만 맞는다. (플레이어와는 서로 관통한다)
 // 애니메이션: Dash(Sprite Sheet_7 → 8, 반복 없이 마지막 그림 유지)
@@ -46,6 +47,7 @@ public class SkullDogDashState : SkullDogState
         _enterTime = Time.time;
         _isArriving = _remainingDistance <= ArriveDistance;
 
+        skullDog.CountDash();
         skullDog.HitChecker.ResetHitTargets();
         skullDog.Movement.SetGravityEnabled(false);
         skullDog.Movement.SetVelocity(Vector2.zero);

@@ -50,3 +50,4 @@ MonoBehaviour:
   _bossSpawnPoint: {fileID: 0}
   _playerHPBar: {fileID: 0}
   _bossHPBar: {fileID: 0}
+  _bossPatternGaugeBar: {fileID: 0}

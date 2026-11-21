@@ -75,7 +75,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1701885051
-  m_SortingLayer: 3
+  m_SortingLayer: 5
   m_SortingOrder: 0
   m_Sprite: {fileID: 1099714834100166994, guid: 26b78d8a19d96a04e867cb764dd9d7de, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -139,6 +139,7 @@ MonoBehaviour:
   - {fileID: -8293774232532985023, guid: 26b78d8a19d96a04e867cb764dd9d7de, type: 3}
   _duration: 1.2
   _loop: 1
+  _useUnscaledTime: 0
 --- !u!1 &1723974370826859067
 GameObject:
   m_ObjectHideFlags: 0
@@ -543,7 +544,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1381404352
-  m_SortingLayer: 1
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: 815424164945274260, guid: bcc878261757bb445930682d8ead3de0, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -1187,6 +1188,7 @@ GameObject:
   - component: {fileID: 8835368387318907419}
   - component: {fileID: 1102452800389204608}
   - component: {fileID: 2548503527083357204}
+  - component: {fileID: 7707937365713236181}
   m_Layer: 11
   m_Name: SkullDog
   m_TagString: Untagged
@@ -1382,6 +1384,8 @@ MonoBehaviour:
   _dashSpeed: 30
   _dashMaxDuration: 1
   _dashDamageMultiplier: 1
+  _dashChainChance: 0.5
+  _maxDashChain: 3
   _dashLines: {fileID: 6080829409870117591}
   _dashLinesEnter: {fileID: 6761558405017344215}
   _dashLinesExit: {fileID: 8296688710172811359}
@@ -1391,10 +1395,24 @@ MonoBehaviour:
   _runTurnAcceleration: 20
   _runDamageMultiplier: 1
   _runGraceDuration: 0.5
+  _gaugeFillDuration: 20
   _stunMinDuration: 1
   _stunMaxDuration: 3
   _stunVfxPrefab: {fileID: 9119672947437463740, guid: 247fb4a106e55704491dc4489258456f, type: 3}
   _impactFeedbacks: {fileID: 961336831110992304}
+--- !u!114 &7707937365713236181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5035942479257540204}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a32481b313115cc4fad671b4adf529e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _maxValue: 100
 --- !u!1 &6200048414298414809
 GameObject:
   m_ObjectHideFlags: 0
