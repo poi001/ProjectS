@@ -25,32 +25,85 @@ public abstract class PlayerState : State<Player>
         owner.Animation.UpdateFacing(GetMoveInput());
     }
 
-    // 땅 위 상태로 돌아갈 때 점프 > 대시 > 공격 > 이동 여부(Run/Idle) 순으로 다음 상태를 고른다.
+    // 땅 위 상태로 돌아갈 때 점프 > 대시 > 공격 > 스킬 > 블로킹 > 이동 여부(Run/Idle) 순으로 다음 상태를 고른다.
     // 착지/공격 종료 프레임에 들어온 입력도 놓치지 않기 위함이다.
     // attackBufferExtraTime: 애니메이션 종료를 늦게 감지한 만큼 공격 버퍼 시간을 늘려서 확인한다.
     protected void ChangeToGroundedState(float attackBufferExtraTime = 0f)
     {
-        if (owner.CanJump)
+        if (TryChangeToGroundedAction(attackBufferExtraTime))
         {
-            stateMachine.ChangeState(owner.JumpState);
-            return;
-        }
-
-        if (TryChangeToDashState())
-        {
-            return;
-        }
-
-        if (owner.InputHandler.IsAttackBuffered(attackBufferExtraTime))
-        {
-            stateMachine.ChangeState(owner.AttackState);
             return;
         }
 
         stateMachine.ChangeState(IsMoving() ? owner.RunState : owner.IdleState);
     }
 
-    // 공중 상태(Jump/Fall/WallJump) 공통 전환. 대시 > 공중 점프 > 점프 공격 > 벽타기 순으로 확인한다. 전환했다면 true를 반환한다.
+    // 땅 위에서 입력으로 시작하는 동작(점프 > 대시 > 공격 > 스킬 > 블로킹)으로 전환한다. 전환했다면 true를 반환한다.
+    private bool TryChangeToGroundedAction(float attackBufferExtraTime)
+    {
+        if (owner.CanJump)
+        {
+            stateMachine.ChangeState(owner.JumpState);
+            return true;
+        }
+
+        if (TryChangeToDashState())
+        {
+            return true;
+        }
+
+        if (owner.InputHandler.IsAttackBuffered(attackBufferExtraTime))
+        {
+            stateMachine.ChangeState(owner.AttackState);
+            return true;
+        }
+
+        return TryChangeToSkillState() || TryChangeToBlockState();
+    }
+
+    // 땅 위에서 동작의 끝부분(공격 복귀 동작 등)을 입력으로 끊을 때 쓴다. 점프 > 대시 > 공격 > 스킬 > 블로킹 > 이동(Run) 순으로 확인한다.
+    // 입력이 없으면 전환하지 않고 false를 반환한다. (발밑이 사라져도 낙하로 넘어가지 않는다. 동작이 끝난 뒤에 처리한다)
+    protected bool TryInterruptOnGround()
+    {
+        if (TryChangeToGroundedAction(0f))
+        {
+            return true;
+        }
+
+        if (IsMoving())
+        {
+            stateMachine.ChangeState(owner.RunState);
+            return true;
+        }
+
+        return false;
+    }
+
+    // 스킬 입력이 있고 스킬을 쓸 수 있으면(땅 위, 쿨타임 종료) 스킬을 쓴다. 전환했다면 true를 반환한다.
+    protected bool TryChangeToSkillState()
+    {
+        if (!owner.CanSkill)
+        {
+            return false;
+        }
+
+        stateMachine.ChangeState(owner.SkillState);
+        return true;
+    }
+
+    // 블로킹 입력이 있고 블로킹할 수 있으면(땅 위, 쿨타임 종료) 블로킹한다. 전환했다면 true를 반환한다.
+    protected bool TryChangeToBlockState()
+    {
+        if (!owner.CanBlock)
+        {
+            return false;
+        }
+
+        stateMachine.ChangeState(owner.BlockState);
+        return true;
+    }
+
+    // 공중 상태(Jump/Fall/WallJump) 공통 전환. 대시 > 공중 점프 > 공중 공격 > 벽타기 순으로 확인한다. 전환했다면 true를 반환한다.
     protected bool TryChangeFromAirborneState()
     {
         return TryChangeToDashState()
@@ -115,10 +168,10 @@ public abstract class PlayerState : State<Player>
         return true;
     }
 
-    // 공중 상태(Jump/Fall)에서 공격 입력이 버퍼에 있으면 점프 공격으로 전환한다. 전환했다면 true를 반환한다.
+    // 공중 상태(Jump/Fall)에서 공격 입력이 버퍼에 있으면 공중 공격으로 전환한다. 전환했다면 true를 반환한다.
     protected bool TryChangeToJumpAttackState()
     {
-        if (owner.Movement.IsGrounded || !owner.InputHandler.HasBufferedAttack)
+        if (!owner.CanAirAttack || !owner.InputHandler.HasBufferedAttack)
         {
             return false;
         }
@@ -135,7 +188,7 @@ public abstract class PlayerState : State<Player>
         return owner.InputHandler.IsAttackBuffered(timeSinceFinished);
     }
 
-    // Idle/Run 공통 전환(점프, 대시, 낙하, 공격). 전환했다면 true를 반환한다.
+    // Idle/Run 공통 전환(점프, 대시, 낙하, 공격, 스킬, 블로킹). 전환했다면 true를 반환한다.
     protected bool TryChangeFromGroundedState()
     {
         if (owner.CanJump)
@@ -161,6 +214,6 @@ public abstract class PlayerState : State<Player>
             return true;
         }
 
-        return false;
+        return TryChangeToSkillState() || TryChangeToBlockState();
     }
 }

@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// New Input System(PlayerInputActions)으로부터 키 입력을 받고, 점프/공격/대시 입력을 버퍼에 보관한다.
+// New Input System(PlayerInputActions)으로부터 키 입력을 받고, 점프/공격/대시/블로킹/스킬 입력을 버퍼에 보관한다.
 // 버퍼: 입력이 조금 일찍 들어와도 버퍼 시간 안에 실행 가능해지면 처리되도록 마지막 입력 시각을 기억한다.
-// 입력 잠금(SetLocked): 시네마틱처럼 조작을 받지 않아야 할 때 켠다. 잠근 동안 이동 입력은 0으로 읽히고 점프/공격/대시 입력은 버려진다.
+// 입력 잠금(SetLocked): 시네마틱처럼 조작을 받지 않아야 할 때 켠다. 잠근 동안 이동 입력은 0으로 읽히고 점프/공격/대시/블로킹/스킬 입력은 버려진다.
 // 키 입력 자체는 계속 받아 두므로, 방향키를 누른 채로 잠금이 풀리면 다시 누르지 않아도 바로 움직인다.
 // 잠근 채로 공격만 허용(SetAttackAllowedWhileLocked): 잠금 중에도 공격 입력만 받는다. 이동·점프·대시는 그대로 막힌다. (Mushroom 반응속도 기믹)
 public class PlayerInputHandler : MonoBehaviour
@@ -13,11 +13,17 @@ public class PlayerInputHandler : MonoBehaviour
     [SerializeField] private float _attackBufferTime = 0.25f;
     [Tooltip("대시 입력을 기억해 두는 시간입니다. 쿨타임이 끝난 뒤 누른 입력만 유효하며, 대시 중이나 쿨타임 중 누른 입력은 다음 대시로 예약되지 않습니다. (단위: 초)")]
     [SerializeField] private float _dashBufferTime = 0.25f;
+    [Tooltip("블로킹 입력을 기억해 두는 시간입니다. 쿨타임이 끝난 뒤 누른 입력만 유효하며, 쿨타임 중 누른 입력은 다음 블로킹으로 예약되지 않습니다. (단위: 초)")]
+    [SerializeField] private float _blockBufferTime = 0.15f;
+    [Tooltip("스킬 입력을 기억해 두는 시간입니다. 쿨타임이 끝난 뒤 누른 입력만 유효하며, 쿨타임 중 누른 입력은 다음 스킬로 예약되지 않습니다. (단위: 초)")]
+    [SerializeField] private float _skillBufferTime = 0.15f;
 
     private PlayerInputActions _inputActions;
     private float _lastJumpPressedTime = float.NegativeInfinity;
     private float _lastAttackPressedTime = float.NegativeInfinity;
     private float _lastDashPressedTime = float.NegativeInfinity;
+    private float _lastBlockPressedTime = float.NegativeInfinity;
+    private float _lastSkillPressedTime = float.NegativeInfinity;
 
     // 실제로 눌려 있는 이동 입력. 잠금 중에도 갱신해 두었다가 잠금이 풀리면 그대로 쓴다.
     private float _rawMoveInput;
@@ -47,6 +53,8 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Player.Jump.started += OnJump;
         _inputActions.Player.Attack.started += OnAttack;
         _inputActions.Player.Dash.started += OnDash;
+        _inputActions.Player.Block.started += OnBlock;
+        _inputActions.Player.Skill.started += OnSkill;
         _inputActions.Player.Enable();
     }
 
@@ -58,10 +66,14 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Player.Jump.started -= OnJump;
         _inputActions.Player.Attack.started -= OnAttack;
         _inputActions.Player.Dash.started -= OnDash;
+        _inputActions.Player.Block.started -= OnBlock;
+        _inputActions.Player.Skill.started -= OnSkill;
         _rawMoveInput = 0f;
         ConsumeJumpBuffer();
         ConsumeAttackBuffer();
         ConsumeDashBuffer();
+        ConsumeBlockBuffer();
+        ConsumeSkillBuffer();
     }
 
     private void OnDestroy()
@@ -69,7 +81,7 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Dispose();
     }
 
-    // 입력을 잠그거나 푼다. 잠그는 순간 버퍼에 남은 점프/공격/대시 입력도 버려서, 잠금이 풀린 뒤에 뒤늦게 실행되지 않게 한다.
+    // 입력을 잠그거나 푼다. 잠그는 순간 버퍼에 남은 점프/공격/대시/블로킹/스킬 입력도 버려서, 잠금이 풀린 뒤에 뒤늦게 실행되지 않게 한다.
     public void SetLocked(bool isLocked)
     {
         if (IsLocked == isLocked)
@@ -84,6 +96,8 @@ public class PlayerInputHandler : MonoBehaviour
             ConsumeJumpBuffer();
             ConsumeAttackBuffer();
             ConsumeDashBuffer();
+            ConsumeBlockBuffer();
+            ConsumeSkillBuffer();
         }
     }
 
@@ -133,6 +147,30 @@ public class PlayerInputHandler : MonoBehaviour
         return _lastDashPressedTime >= earliestPressTime && Time.time - _lastDashPressedTime <= _dashBufferTime;
     }
 
+    // 블로킹 입력을 소비한다. 한 번의 입력으로 중복 발동하지 않도록 한다.
+    public void ConsumeBlockBuffer()
+    {
+        _lastBlockPressedTime = float.NegativeInfinity;
+    }
+
+    // 블로킹 사용 가능 시각 이후에 누른 입력만 인정한다. 쿨타임 중 입력이 쿨타임 종료 직후 발동되는 것을 막는다.
+    public bool IsBlockBuffered(float earliestPressTime)
+    {
+        return _lastBlockPressedTime >= earliestPressTime && Time.time - _lastBlockPressedTime <= _blockBufferTime;
+    }
+
+    // 스킬 입력을 소비한다. 한 번의 입력으로 중복 발동하지 않도록 한다.
+    public void ConsumeSkillBuffer()
+    {
+        _lastSkillPressedTime = float.NegativeInfinity;
+    }
+
+    // 스킬 사용 가능 시각 이후에 누른 입력만 인정한다. 쿨타임 중 입력이 쿨타임 종료 직후 발동되는 것을 막는다.
+    public bool IsSkillBuffered(float earliestPressTime)
+    {
+        return _lastSkillPressedTime >= earliestPressTime && Time.time - _lastSkillPressedTime <= _skillBufferTime;
+    }
+
     private void OnMove(InputAction.CallbackContext context)
     {
         _rawMoveInput = context.ReadValue<float>();
@@ -166,5 +204,25 @@ public class PlayerInputHandler : MonoBehaviour
         }
 
         _lastDashPressedTime = Time.time;
+    }
+
+    private void OnBlock(InputAction.CallbackContext context)
+    {
+        if (IsLocked)
+        {
+            return;
+        }
+
+        _lastBlockPressedTime = Time.time;
+    }
+
+    private void OnSkill(InputAction.CallbackContext context)
+    {
+        if (IsLocked)
+        {
+            return;
+        }
+
+        _lastSkillPressedTime = Time.time;
     }
 }

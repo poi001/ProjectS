@@ -1,5 +1,6 @@
-// 점프 상태. Jump 애니메이션이 끝나면 접지 여부에 따라 Fall 또는 Idle/Run으로 전환한다.
-// 점프 중에는 대시, 공중 점프, 점프 공격, 벽타기로 전환할 수 있다.
+// 점프 상태. 뛰어오르는 동작(JumpStart)을 재생하고, 끝나면 접지 여부에 따라 Fall 또는 땅 위 상태로 전환한다.
+// 점프는 JumpStart(이 상태, 뛰어오르는 동작) → Fall(PlayerFallState, 공중에 있는 동안)로 이어진다. 착지 동작은 따로 없다.
+// 점프 중에는 대시, 공중 점프, 공중 공격, 벽타기로 전환할 수 있다.
 // 공중 점프(PlayerAirJumpState)는 이 상태를 상속해 뛰어오르는 힘만 바꾼다.
 public class PlayerJumpState : PlayerState
 {
@@ -12,7 +13,7 @@ public class PlayerJumpState : PlayerState
     {
         owner.InputHandler.ConsumeJumpBuffer();
         ApplyJumpVelocity();
-        owner.Animation.Play(PlayerAnimation.Jump);
+        owner.Animation.Play(PlayerAnimation.JumpStart);
     }
 
     public override void LogicUpdate()
@@ -24,7 +25,7 @@ public class PlayerJumpState : PlayerState
             return;
         }
 
-        if (!owner.Animation.IsFinished(PlayerAnimation.Jump))
+        if (!owner.Animation.IsFinished(PlayerAnimation.JumpStart))
         {
             return;
         }

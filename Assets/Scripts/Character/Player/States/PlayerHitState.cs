@@ -25,6 +25,8 @@ public class PlayerHitState : PlayerState
         // 맞기 전에 눌러 둔 입력이 피격 직후에 실행되지 않도록 비운다.
         owner.InputHandler.ConsumeJumpBuffer();
         owner.InputHandler.ConsumeAttackBuffer();
+        owner.InputHandler.ConsumeBlockBuffer();
+        owner.InputHandler.ConsumeSkillBuffer();
 
         Vector2 knockbackVelocity = owner.KnockbackVelocity;
         owner.Movement.Launch(new Vector2(_knockbackDirection * knockbackVelocity.x, knockbackVelocity.y));

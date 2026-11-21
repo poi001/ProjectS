@@ -18,6 +18,8 @@ public class Player : Character
     [SerializeField] private float _coyoteTime = 0.1f;
     [Tooltip("공중 점프의 높이 배율입니다. 1이면 땅에서 하는 점프와 같은 높이까지 오릅니다. 공중 점프 횟수는 PlayerStatsSO에서 정합니다.")]
     [SerializeField, Min(0f)] private float _airJumpHeightRatio = 1f;
+    [Tooltip("공중 점프하는 순간 발밑(몸 콜라이더의 아래쪽 가운데)에 띄우는 일회성 효과 프리팹입니다. Assets/Prefabs/FX/Player/PlayerAirJumpDust를 연결합니다. 띄운 자리에 남고 플레이어를 따라가지 않습니다.\n비워 두면 효과가 나오지 않습니다.")]
+    [SerializeField] private GameObject _airJumpDustPrefab;
 
     [Header("벽타기")]
     [Tooltip("벽을 타는 동안 미끄러져 내려가는 속도입니다. 0이면 벽에 붙은 채 멈춥니다. (단위: 월드 거리/초)")]
@@ -49,16 +51,32 @@ public class Player : Character
         new PlayerAttack(1f, new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f))),
         new PlayerAttack(1f, new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f)))
     };
-    [Tooltip("점프 공격의 판정 범위입니다. 피해량은 지상 콤보 1단계의 배율을 그대로 씁니다.")]
-    [SerializeField] private HitboxShape _jumpAttackHitbox = new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f));
+    [Tooltip("공중 콤보의 단계별 공격 설정입니다. 배열 크기가 곧 공중 콤보 수이며, Animator에 JumpAttack{n}, JumpAttack{n}_End 상태가 이 수만큼 있어야 합니다.\n단계마다 피해 배율과 판정 범위를 정합니다. 공중 콤보는 떨어지면서 나가며, 공중에 있는 동안 횟수 제한 없이 다시 쓸 수 있습니다.")]
+    [SerializeField] private PlayerAttack[] _airComboAttacks =
+    {
+        new PlayerAttack(1f, new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f))),
+        new PlayerAttack(1f, new HitboxShape(new Vector2(1f, 0f), new Vector2(1.5f, 1f)))
+    };
 
     [Header("피격")]
     [Tooltip("피해를 입은 순간부터 무적인 시간입니다. 넉백 시간도 포함됩니다. (단위: 초)")]
-    [SerializeField] private float _invincibleDuration = 1f;
+    [SerializeField, Min(0f)] private float _invincibleDuration = 1f;
     [Tooltip("피격 시 넉백 속도입니다. x는 피해를 입은 방향의 반대로 밀리는 속도, y는 위로 뜨는 속도입니다. (단위: 월드 거리/초)")]
     [SerializeField] private Vector2 _knockbackVelocity = new Vector2(5f, 5f);
     [Tooltip("실제 피해를 입었을 때 재생하는 Feel 피드백입니다. 짧은 슬로우 모션과 붉은 화면 플래시의 시간·강도는 이 MMF_Player에서 조절합니다. Initialization Mode는 Script로 설정합니다.")]
     [SerializeField] private MMF_Player _hitFeedbacks;
+
+    [Header("블로킹")]
+    [Tooltip("블로킹이 끝난 뒤 다시 블로킹할 수 있을 때까지의 시간입니다. 막는 데 성공했는지와 관계없이 적용됩니다. (단위: 초)")]
+    [SerializeField, Min(0f)] private float _blockCooldown = 10f;
+    [Tooltip("블로킹에 성공했을 때(공격을 막았을 때) 재생하는 Feel 피드백입니다. 짧은 슬로우 모션의 배율·시간은 이 MMF_Player에서 조절합니다. Initialization Mode는 Script로 설정합니다.\n비워 두면 연출 없이 막기만 합니다.")]
+    [SerializeField] private MMF_Player _blockFeedbacks;
+    [Tooltip("블로킹에 성공했을 때 재생하는 소리입니다. 비워 두면 소리가 나지 않습니다.")]
+    [SerializeField] private SoundDataSO _blockSuccessSound;
+
+    [Header("스킬")]
+    [Tooltip("스킬(스페이스바)이 끝난 뒤 다시 쓸 수 있을 때까지의 시간입니다. 0이면 끝나자마자 다시 쓸 수 있습니다. (단위: 초)")]
+    [SerializeField, Min(0f)] private float _skillCooldown = 0f;
 
     private StateMachine<Player> _stateMachine;
     // 부모의 Animation 자동 프로퍼티와 직렬화 필드 이름이 겹치지 않도록 별도 필드에 보관한다.
@@ -68,6 +86,10 @@ public class Player : Character
     private bool _hasAirDash;
     // 다시 대시할 수 있게 되는 시각 (대시 쿨타임)
     private float _dashReadyTime = float.NegativeInfinity;
+    // 다시 블로킹할 수 있게 되는 시각 (블로킹 쿨타임)
+    private float _blockReadyTime = float.NegativeInfinity;
+    // 다시 스킬을 쓸 수 있게 되는 시각 (스킬 쿨타임)
+    private float _skillReadyTime = float.NegativeInfinity;
     // 벽 점프 직후 방금 떠난 벽 쪽 입력을 막는 시각과 그 벽의 방향 (오른쪽 1, 왼쪽 -1)
     private float _wallBlockEndTime = float.NegativeInfinity;
     private float _blockedWallDirection;
@@ -91,9 +113,6 @@ public class Player : Character
     public CharacterVital Vital { get; private set; }
     public new PlayerAnimation Animation => _playerAnimation;
     public PlayerStatsSO Stats => _stats;
-    public HitboxShape JumpAttackHitbox => _jumpAttackHitbox;
-    // 점프 공격의 데미지 (공격력 × 지상 콤보 1단계의 배율)
-    public float JumpAttackDamage => _comboAttacks.Length > 0 ? GetDamage(_comboAttacks[0]) : _stats.AttackPower;
     public Vector2 KnockbackVelocity => _knockbackVelocity;
     public float AirJumpHeightRatio => _airJumpHeightRatio;
     public float WallSlideSpeed => _wallSlideSpeed;
@@ -115,14 +134,18 @@ public class Player : Character
     public PlayerAttackState AttackState { get; private set; }
     public PlayerJumpAttackState JumpAttackState { get; private set; }
     public PlayerHitState HitState { get; private set; }
+    public PlayerBlockState BlockState { get; private set; }
+    public PlayerSkillState SkillState { get; private set; }
     public PlayerDeadState DeadState { get; private set; }
 
     // Animator에서 실제로 사용할 수 있는 지상 콤보 수
     public int ComboCount { get; private set; }
+    // Animator에서 실제로 사용할 수 있는 공중 콤보 수
+    public int AirComboCount { get; private set; }
 
     public State<Player> CurrentState => _stateMachine.CurrentState;
 
-    // 지금 지상 콤보를 다음 타로 이어갈 수 없는지 여부. 시네마틱이 공격만 허용하면서 콤보는 막은 동안 true다. (PlayerAttackState가 확인한다)
+    // 지금 콤보를 다음 타로 이어갈 수 없는지 여부. 시네마틱이 공격만 허용하면서 콤보는 막은 동안 true다. (PlayerAttackState, PlayerJumpAttackState가 확인한다)
     public bool IsComboBlocked => _isCinematicPlaying && _isCinematicAttackAllowed && !_isCinematicComboAllowed;
 
     protected override string HurtboxLayerName => "Player";
@@ -139,6 +162,22 @@ public class Player : Character
         && Time.time >= _dashReadyTime
         && InputHandler.IsDashBuffered(_dashReadyTime)
         && (Movement.IsGrounded || _hasAirDash);
+
+    // 공중에 있고 Animator에 공중 콤보 상태가 있어야 한다. 횟수 제한은 없다.
+    public bool CanAirAttack => !Movement.IsGrounded && AirComboCount > 0;
+
+    // 땅 위에서만 블로킹할 수 있고, 쿨타임이 끝난 뒤 새로 누른 입력이 있어야 한다.
+    // 블로킹 중에는 재진입하지 않는다. (쿨타임은 블로킹이 끝날 때 시작되므로, 끝나는 프레임에 눌러 둔 입력으로 쿨타임 없이 다시 막지 못하게 한다)
+    public bool CanBlock => CurrentState != BlockState
+        && Movement.IsGrounded
+        && Time.time >= _blockReadyTime
+        && InputHandler.IsBlockBuffered(_blockReadyTime);
+
+    // 땅 위에서만 스킬을 쓸 수 있고, 쿨타임이 끝난 뒤 새로 누른 입력이 있어야 한다. 스킬 중에는 재진입하지 않는다. (블로킹과 같은 이유)
+    public bool CanSkill => CurrentState != SkillState
+        && Movement.IsGrounded
+        && Time.time >= _skillReadyTime
+        && InputHandler.IsSkillBuffered(_skillReadyTime);
 
     // 초기화 순서: 컴포넌트 참조 → 스탯 적용 → 상태 생성 → Animator 설정. 이벤트 구독과 상태기계 시작은 OnInitCompleted에서 한다.
     protected override bool OnInit(BattleContext context)
@@ -168,10 +207,26 @@ public class Player : Character
         CreateStates();
 
         ComboCount = Animation.SetupCombos(Mathf.Max(1, _comboAttacks.Length));
+        AirComboCount = Animation.SetupAirCombos(_airComboAttacks.Length);
         Animation.SetAttackSpeed(_stats.AttackSpeed);
         ValidateAttackSettings();
         ValidateAnimationStates();
         _hitFeedbacks?.Initialization();
+
+        if (_blockFeedbacks != null)
+        {
+            _blockFeedbacks.Initialization();
+        }
+
+        if (_airJumpDustPrefab != null && PoolManager.HasInstance)
+        {
+            // 첫 공중 점프 때 생성 비용으로 끊기지 않도록 미리 하나 만들어 둔다.
+            PoolManager.Instance.Prewarm(_airJumpDustPrefab, 1);
+        }
+
+        _dashReadyTime = float.NegativeInfinity;
+        _blockReadyTime = float.NegativeInfinity;
+        _skillReadyTime = float.NegativeInfinity;
         return true;
     }
 
@@ -197,6 +252,12 @@ public class Player : Character
         Animation.StopWallSlideDust();
         Animation.StopDashLines();
         _hitFeedbacks?.StopFeedbacks();
+
+        if (_blockFeedbacks != null)
+        {
+            _blockFeedbacks.StopFeedbacks();
+        }
+
         Vital.Damaged -= OnDamaged;
         Vital.Died -= OnDied;
         EventBus<CinematicStartedEvent>.Unsubscribe(OnCinematicStarted);
@@ -372,6 +433,20 @@ public class Player : Character
         _remainingAirJumps = Mathf.Max(0, _remainingAirJumps - 1);
     }
 
+    // 공중 점프를 시작할 때 PlayerAirJumpState가 호출한다. 발밑 자리에 효과(pixelFX impacts/air-jump, Mushroom과 같은 그림)를 띄운다.
+    // 풀에서 꺼낸 효과는 부모 없이 그 자리에 남고, 재생이 끝나면 Flipbook이 풀로 돌려보낸다. 좌우 대칭이라 뒤집지 않는다.
+    public void SpawnAirJumpDust()
+    {
+        if (_airJumpDustPrefab == null || !PoolManager.HasInstance)
+        {
+            return;
+        }
+
+        Bounds bodyBounds = BodyCollider.bounds;
+        Vector3 position = new Vector3(bodyBounds.center.x, bodyBounds.min.y, 0f);
+        PoolManager.Instance.Spawn(_airJumpDustPrefab, position, Quaternion.identity);
+    }
+
     // 대시를 시작할 때 호출한다. 공중에서 시작했다면 공중 대시를 소모한다.
     public void ConsumeDash()
     {
@@ -387,7 +462,34 @@ public class Player : Character
         _dashReadyTime = Time.time + _dashCooldown;
     }
 
-    // 해당 콤보 단계의 공격 설정. 설정되지 않았다면 null을 반환한다.
+    // 블로킹이 끝날 때 호출한다. 지금부터 쿨타임이 지나야 다시 블로킹할 수 있다.
+    public void StartBlockCooldown()
+    {
+        _blockReadyTime = Time.time + _blockCooldown;
+    }
+
+    // 스킬이 끝날 때 호출한다. 지금부터 쿨타임이 지나야 다시 스킬을 쓸 수 있다.
+    public void StartSkillCooldown()
+    {
+        _skillReadyTime = Time.time + _skillCooldown;
+    }
+
+    // 블로킹으로 공격을 막았을 때 호출한다. 짧은 슬로우 모션(피드백)과 소리를 재생한다.
+    // 막았을 때 적에게 주는 불이익이나 플레이어가 얻는 이득은 기획이 정해지면 이 자리에 추가한다.
+    public void PlayBlockSuccessEffects()
+    {
+        if (_blockFeedbacks != null)
+        {
+            _blockFeedbacks.PlayFeedbacks();
+        }
+
+        if (_blockSuccessSound != null && SoundManager.HasInstance)
+        {
+            SoundManager.Instance.PlaySfx(_blockSuccessSound);
+        }
+    }
+
+    // 해당 지상 콤보 단계의 공격 설정. 설정되지 않았다면 null을 반환한다.
     public PlayerAttack GetComboAttack(int comboIndex)
     {
         if (comboIndex >= _comboAttacks.Length)
@@ -398,13 +500,24 @@ public class Player : Character
         return _comboAttacks[comboIndex];
     }
 
+    // 해당 공중 콤보 단계의 공격 설정. 설정되지 않았다면 null을 반환한다.
+    public PlayerAttack GetAirComboAttack(int comboIndex)
+    {
+        if (comboIndex >= _airComboAttacks.Length)
+        {
+            return null;
+        }
+
+        return _airComboAttacks[comboIndex];
+    }
+
     // 공격의 데미지 (공격력 × 공격 배율)
     public float GetDamage(PlayerAttack attack)
     {
         return _stats.AttackPower * attack.DamageMultiplier;
     }
 
-    // 선택했을 때 지상 콤보 단계별 범위와 점프 공격 범위를 그린다.
+    // 선택했을 때 지상 콤보와 공중 콤보의 단계별 범위를 그린다.
     protected override void DrawHitboxGizmos(float facingDirection)
     {
         if (_comboAttacks != null)
@@ -415,7 +528,13 @@ public class Player : Character
             }
         }
 
-        DrawHitboxGizmo(_jumpAttackHitbox, facingDirection, "점프 공격");
+        if (_airComboAttacks != null)
+        {
+            for (int i = 0; i < _airComboAttacks.Length; i++)
+            {
+                DrawHitboxGizmo(_airComboAttacks[i].Hitbox, facingDirection, $"공중 콤보 {i + 1}");
+            }
+        }
     }
 
     private void ApplyStats()
@@ -433,14 +552,18 @@ public class Player : Character
         }
     }
 
-    // 애니메이션이 끝나야 빠져나가는 상태(Hit, WallJump)는 Animator에 상태가 없으면 끝나지 않으므로 미리 알린다.
-    // 나머지 새 동작(WallSlide, Dash)은 상태가 없어도 멈추지는 않지만 모습이 바뀌지 않으므로 함께 확인한다.
+    // 애니메이션이 끝나야 빠져나가는 상태(JumpStart, Hit, WallJump, Block, Skill1)는 Animator에 상태가 없으면 끝나지 않으므로 미리 알린다.
+    // 나머지(Fall, WallSlide, Dash)는 상태가 없어도 멈추지는 않지만 모습이 바뀌지 않으므로 함께 확인한다.
     private void ValidateAnimationStates()
     {
+        ValidateAnimationState(PlayerAnimation.JumpStart, "JumpStart");
+        ValidateAnimationState(PlayerAnimation.Fall, "Fall");
         ValidateAnimationState(PlayerAnimation.Hit, "Hit");
-        ValidateAnimationState(PlayerAnimation.WallJump, "WallJump");
         ValidateAnimationState(PlayerAnimation.WallSlide, "WallSlide");
+        ValidateAnimationState(PlayerAnimation.WallJump, "WallJump");
         ValidateAnimationState(PlayerAnimation.Dash, "Dash");
+        ValidateAnimationState(PlayerAnimation.Block, "Block");
+        ValidateAnimationState(PlayerAnimation.Skill1, "Skill1");
     }
 
     private void ValidateAnimationState(int stateHash, string stateName)
@@ -465,6 +588,8 @@ public class Player : Character
         AttackState = new PlayerAttackState(this, _stateMachine);
         JumpAttackState = new PlayerJumpAttackState(this, _stateMachine);
         HitState = new PlayerHitState(this, _stateMachine);
+        BlockState = new PlayerBlockState(this, _stateMachine);
+        SkillState = new PlayerSkillState(this, _stateMachine);
         DeadState = new PlayerDeadState(this, _stateMachine);
     }
 
