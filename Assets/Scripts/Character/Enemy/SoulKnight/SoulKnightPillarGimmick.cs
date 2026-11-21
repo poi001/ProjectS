@@ -7,7 +7,8 @@ using UnityEngine;
 // 기도가 끝나면(End) 기둥을 모두 바닥 아래로 내려보낸 뒤 풀로 돌려보낸다. 기둥이 나와 있거나 내려가는 동안에는 IsBusy가 true다.
 // 기둥 위치는 정해 둔 좌표가 아니라 시작할 때 보스 위치에서 좌우 벽과 바닥을 찾아 계산한다. (맵 크기가 달라져도 같은 규칙으로 놓인다)
 // 기둥이 다 솟은 뒤부터 결석을 칠 때까지, 결석이 일정 간격으로 플레이어에게 번개(SoulKnightCrystalBolt)를 쏜다. 경고 후 꽂히므로 움직이면 피할 수 있다.
-// 기둥과 번개는 PoolManager로 꺼내 쓰므로 전투 씬에 PoolManager가 있어야 한다.
+// 기둥이 솟는 동안 기둥 양쪽 밑동에서 바닥 먼지가 바깥쪽으로 날린다. 벽에 붙은 쪽은 먼지를 내지 않는다.
+// 기둥·번개·먼지는 PoolManager로 꺼내 쓰므로 전투 씬에 PoolManager가 있어야 한다.
 public class SoulKnightPillarGimmick : MonoBehaviour
 {
     private const string WallLayerName = "Wall";
@@ -32,6 +33,10 @@ public class SoulKnightPillarGimmick : MonoBehaviour
 
     [Tooltip("목표물을 쳐서 기믹이 끝났을 때, 기둥이 내려가기 시작하기까지 기다리는 시간입니다. (단위: 초)\n결석이 터지는 효과가 기둥 위에서 끝까지 보이도록 효과 길이 안쪽으로 둡니다. 이 시간 동안에도 보스는 Ghost 레이어로 남고 다음 패턴을 시작하지 않습니다. 게이지가 0이 되어 끝났을 때는 기다리지 않습니다.")]
     [SerializeField, Min(0f)] private float _clearedSinkDelay = 1.2f;
+
+    [Header("솟을 때 먼지")]
+    [Tooltip("기둥이 솟는 동안 기둥 양쪽 밑동에서 바깥쪽으로 날리는 바닥 먼지 프리팹입니다. 왼쪽으로 날리는 그림이 기본이며, 왼쪽 밑동에는 그대로, 오른쪽 밑동에는 좌우 반전해 둡니다. 비워 두면 먼지가 나오지 않습니다.\nFlipbook(반복 안 함)과 Manual 반환 PooledObject를 가져 끝나면 스스로 풀로 돌아갑니다. 재생 시간은 기둥이 솟는 시간과 같게 둡니다.")]
+    [SerializeField] private GameObject _riseDustPrefab;
 
     [Header("결석 번개")]
     [Tooltip("결석이 플레이어에게 쏘는 번개 프리팹입니다. 비워 두면 번개를 쏘지 않습니다.")]
@@ -168,6 +173,12 @@ public class SoulKnightPillarGimmick : MonoBehaviour
             pillar.Rise(centerX, _groundY, i == targetIndex, _riseDuration, playerBody);
             _pillars.Add(pillar);
 
+            // 맨 양쪽 기둥은 벽에 붙은 쪽에서 먼지가 나오지 않게 한다.
+            bool isLeftEnd = _pillarCount > 1 && i == 0;
+            bool isRightEnd = _pillarCount > 1 && i == _pillarCount - 1;
+            SpawnRiseDust(centerX - halfWidth, -1f, !isLeftEnd);
+            SpawnRiseDust(centerX + halfWidth, 1f, !isRightEnd);
+
             if (i == targetIndex)
             {
                 _targetPillar = pillar;
@@ -256,6 +267,26 @@ public class SoulKnightPillarGimmick : MonoBehaviour
         IsCleared = true;
         // 결석이 터졌으므로 아직 꽂히지 않은 번개는 거둔다.
         CancelBolts();
+    }
+
+    // 기둥 밑동 한쪽(바닥 위 x 위치)에서 바깥쪽(direction: 왼쪽 -1, 오른쪽 1)으로 날리는 먼지를 낸다. 그림은 왼쪽으로 날리는 방향이 기본이라 오른쪽은 좌우 반전한다.
+    private void SpawnRiseDust(float x, float direction, bool isEnabled)
+    {
+        if (!isEnabled || _riseDustPrefab == null)
+        {
+            return;
+        }
+
+        GameObject dust = PoolManager.Instance.Spawn(_riseDustPrefab, new Vector3(x, _groundY, 0f), Quaternion.identity);
+
+        if (dust == null)
+        {
+            return;
+        }
+
+        Vector3 scale = _riseDustPrefab.transform.localScale;
+        scale.x = Mathf.Abs(scale.x) * (direction < 0f ? 1f : -1f);
+        dust.transform.localScale = scale;
     }
 
     // 기둥이 솟아 있고 결석이 남아 있는 동안 정해진 간격으로 번개를 쏜다.

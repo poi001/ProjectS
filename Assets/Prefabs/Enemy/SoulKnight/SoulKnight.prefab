@@ -2284,7 +2284,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1381404352
-  m_SortingLayer: 1
+  m_SortingLayer: 3
   m_SortingOrder: -1
   m_Sprite: {fileID: 4723107735738678597, guid: ce0314671767def4b84dccc13be0b855, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -2838,8 +2838,8 @@ SpriteMask:
   m_MaskAlphaCutoff: 0.2
   m_FrontSortingLayerID: 1701885051
   m_BackSortingLayerID: 1701885051
-  m_FrontSortingLayer: 3
-  m_BackSortingLayer: 3
+  m_FrontSortingLayer: 5
+  m_BackSortingLayer: 5
   m_FrontSortingOrder: 0
   m_BackSortingOrder: -1
   m_IsCustomRangeActive: 1
@@ -2990,7 +2990,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1381404352
-  m_SortingLayer: 1
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: 4723107735738678597, guid: ce0314671767def4b84dccc13be0b855, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -3403,6 +3403,7 @@ MonoBehaviour:
   _riseDuration: 1.2
   _sinkDuration: 0.4
   _clearedSinkDelay: 1.2
+  _riseDustPrefab: {fileID: 8305367659908926759, guid: 165aa3edfc2a7ea4e841a22244bb9265, type: 3}
   _boltPrefab: {fileID: 6862184288499904972, guid: e5e6d15a402143841806666c9aa9febb, type: 3}
   _boltInterval: 1
   _boltWarningTime: 1
@@ -3482,7 +3483,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1701885051
-  m_SortingLayer: 3
+  m_SortingLayer: 5
   m_SortingOrder: 0
   m_Sprite: {fileID: -5783542470795106681, guid: 5099f275c5c789f4dbfa824f0f981ac8, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -3630,6 +3631,7 @@ MonoBehaviour:
   - {fileID: -5898574906216806093, guid: 5099f275c5c789f4dbfa824f0f981ac8, type: 3}
   _duration: 4
   _loop: 1
+  _useUnscaledTime: 0
 --- !u!1 &8215363571558134998
 GameObject:
   m_ObjectHideFlags: 0
@@ -3706,7 +3708,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1701885051
-  m_SortingLayer: 3
+  m_SortingLayer: 5
   m_SortingOrder: 0
   m_Sprite: {fileID: 6574458539986665589, guid: b4370ce70c445d343a1870f4bdce9564, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -3806,6 +3808,7 @@ MonoBehaviour:
   - {fileID: -1379697465, guid: b4370ce70c445d343a1870f4bdce9564, type: 3}
   _duration: 2.4
   _loop: 1
+  _useUnscaledTime: 0
 --- !u!114 &6903937687980418967
 MonoBehaviour:
   m_ObjectHideFlags: 0
