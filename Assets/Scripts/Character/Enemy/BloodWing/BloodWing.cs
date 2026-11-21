@@ -7,6 +7,7 @@ using UnityEngine;
 //       또는 대시 전조(DashReady) → 대시(Dash, 플레이어 쪽 돌진) → 대시 복귀(DashRecover, 가까운 대기 위치로) → Idle
 //  - 브레스(공격): 지금 있는 쪽 대기 위치에서 반대쪽 대기 위치까지 같은 높이로 일정하게 날아가며, 입에서 날아가는 쪽 아래 대각선으로 화염을 뿜는다.
 //    화염은 바닥·벽에 닿는 곳까지 뻗는 긴 직사각형 판정이며, 보스 바로 아래(화염 뒤쪽)가 안전하다.
+//    화염 그림(pixelFX)은 바닥·벽·플레이어 중 먼저 닿는 곳에서 잘리고, 닿는 곳에는 불이 번지는 효과가 계속 보인다.
 //    플레이어는 맞은 뒤 무적 시간 동안에는 피해를 입지 않고, 무적이 끝났는데도 화염에 닿아 있으면 다시 맞는다.
 //  - 대시: 플레이어를 보며 살짝 위로 올라가는 준비 자세(전조) → 준비가 끝나는 순간의 플레이어 위치 쪽으로 빠르게 일직선 돌진(몸통박치기) →
 //    벽이나 바닥에 부딪히면 카메라가 흔들리고, 가까운 쪽 대기 위치(같으면 오른쪽)로 돌아가 Idle. 돌진하는 동안에만 몸에 닿은 플레이어가 피해를 입는다. (한 번만)
@@ -34,6 +35,8 @@ public class BloodWing : Enemy
     private const float DashAimWallMargin = 0.05f;
     // 화염이 입 바로 앞에서 지형에 닿아도 판정 박스 크기가 0이 되지 않도록 두는 최소 길이 (단위: 월드 거리)
     private const float MinBreathLength = 0.01f;
+    // 화염 마스크가 입 뒤쪽으로 더 덮는 길이. 입 뒤로 번지는 빛이 잘리지 않게 한다. (단위: 화염 그림의 로컬 단위, 1 = 그림 64픽셀)
+    private const float BreathFlameMaskBackPadding = 0.2f;
 
     [Header("대기 위치 (화면 위쪽 양 모서리)")]
     [Tooltip("화면 왼쪽·오른쪽 가장자리(벽)에서 대기 위치(보스 중심)까지의 가로 거리입니다. 작을수록 벽에 붙습니다. 대시는 이 위치 바로 아래에서 시작하고 끝나므로, 벽에 바짝 붙은 플레이어도 대시에 맞으려면 1.3보다 작아야 합니다. (대시 몸 판정 반폭 0.7 + 플레이어 피격 판정 폭 0.6) 0.7보다 작으면 몸 콜라이더가 벽에 닿습니다. 대기 중 벽 쪽으로 날개·꼬리가 약 2.1 뻗으므로 2.1보다 작으면 그 부분이 화면 밖으로 잘립니다. 기획이 정해지기 전의 임시값입니다. (단위: 월드 거리)")]
@@ -54,14 +57,18 @@ public class BloodWing : Enemy
     [SerializeField, Range(0f, 80f)] private float _breathAngle = 30f;
     [Tooltip("화염이 시작되는 입 위치입니다. 루트 위치 기준이며 오른쪽을 볼 때 기준입니다. (단위: 월드 거리)")]
     [SerializeField] private Vector2 _breathMouthOffset = new Vector2(0.3f, -0.5f);
-    [Tooltip("화염 판정(긴 직사각형)의 두께입니다. 화염 그림(그레이박스)도 같은 두께로 그려집니다. (단위: 월드 거리)")]
+    [Tooltip("화염 판정(긴 직사각형)의 두께입니다. 화염 그림의 굵기는 이 값과 관계없이 그림(pixelFX breath-jet, 약 0.6) 그대로입니다. (단위: 월드 거리)")]
     [SerializeField, Min(0.01f)] private float _breathWidth = 0.8f;
-    [Tooltip("화염의 최대 길이입니다. 바닥이나 벽에 닿으면 그 지점까지만 뻗습니다. (단위: 월드 거리)")]
+    [Tooltip("화염의 최대 길이입니다. 판정은 바닥이나 벽에 닿으면 그 지점까지만 뻗고, 그림은 바닥·벽·플레이어 중 먼저 닿는 곳까지만 보입니다. 화염 그림(breath-jet)은 약 12까지 그려져 있으므로 12보다 크게 하면 그 너머는 그림 없이 판정만 나갑니다. (단위: 월드 거리)")]
     [SerializeField, Min(0.01f)] private float _breathMaxLength = 12f;
     [Tooltip("화염에 닿은 플레이어가 입는 피해의 공격력 배율입니다. 피해량 = 스탯의 공격력 x 이 값. 플레이어는 맞은 뒤 무적 시간 동안에는 피해를 입지 않고, 무적이 끝났는데도 화염에 닿아 있으면 다시 맞습니다. 기획이 정해지기 전의 임시값입니다.")]
     [SerializeField, Min(0f)] private float _breathDamageMultiplier = 1f;
-    [Tooltip("화염 그림(그레이박스)입니다. Visuals/MirroredVFX 아래의 SpriteRenderer를 연결하며, 기본은 꺼 둡니다. 위치·각도·길이·두께는 위의 값에 맞춰 코드가 정합니다. 스프라이트의 피벗은 가운데(Center)여야 합니다.\n비워 두면 그림 없이 판정만 나갑니다.")]
+    [Tooltip("화염 그림(pixelFX breath-jet, 반복 Flipbook)입니다. Visuals/MirroredVFX 아래의 SpriteRenderer를 연결하며, 기본은 꺼 둡니다. 코드는 위치(입)와 각도만 정하고 크기는 프리팹 값을 그대로 씁니다. 스프라이트의 피벗은 입(화염이 시작되는 점)이어야 하고, 아래 Breath Flame Mask 안에서만 보이도록(Visible Inside Mask) 둡니다.\n비워 두면 그림 없이 판정만 나갑니다.")]
     [SerializeField] private SpriteRenderer _breathFlame;
+    [Tooltip("화염 그림을 닿는 곳에서 자르는 SpriteMask입니다. Breath Flame의 자식이어야 하며, 스프라이트의 피벗은 가운데(Center)여야 합니다. 코드가 입에서 바닥·벽·플레이어 중 먼저 닿는 곳까지 덮도록 가로 위치와 길이를 정하고, 세로 크기는 프리팹 값을 씁니다.\n비워 두면 화염 그림이 잘리지 않습니다.")]
+    [SerializeField] private SpriteMask _breathFlameMask;
+    [Tooltip("화염이 바닥·벽·플레이어에 닿는 곳에 보이는 효과(pixelFX flame-splash, 반복 Flipbook)입니다. Visuals/MirroredVFX 아래의 SpriteRenderer를 연결하며, 기본은 꺼 둡니다. 닿는 동안에만 켜고, 닿은 면 쪽으로 돌리며, 불이 흘러가는 쪽으로 더 번지게 좌우를 뒤집습니다. 스프라이트의 피벗은 닿는 점이어야 하고, 그림은 바닥에 닿는 모습(위가 면의 바깥)이어야 합니다.\n비워 두면 닿는 곳 효과 없이 화염만 보입니다.")]
+    [SerializeField] private SpriteRenderer _breathSplash;
 
     [Header("대시")]
     [Tooltip("대시 준비 자세(전조) 시간입니다. 이 시간 동안 제자리에서 플레이어 쪽을 바라보고, 끝나는 순간의 플레이어 위치로 돌진합니다. (단위: 초)")]
@@ -80,6 +87,8 @@ public class BloodWing : Enemy
     [SerializeField] private HitboxShape _dashBodyHitbox = new HitboxShape(Vector2.zero, new Vector2(1.4f, 2.2f));
     [Tooltip("돌진이 벽이나 바닥에 부딪히거나 남은 운석에 부딪혀 기절할 때 재생하는 피드백입니다. (카메라 흔들림, SoulKnight 슬라이딩 충돌과 같은 값) 루트 VFX/Impact/ImpactFeedbacks의 MMF_Player를 연결합니다.")]
     [SerializeField] private MMF_Player _impactFeedbacks;
+    [Tooltip("돌진이 벽이나 바닥에 부딪히거나 남은 운석에 부딪혀 기절할 때 재생할 효과음 데이터입니다. (Knight 드롭킥·SoulKnight 슬라이딩·Mushroom 점프공격과 같은 Assets/Data/Sound/DropKickImpact_Knight) SoundManager의 Sfx 채널로 재생하며, 위 피드백(카메라 흔들림)과 같은 때 재생합니다.\n비워 두면 소리 없이 진행합니다.")]
+    [SerializeField] private SoundDataSO _impactSound;
 
     [Header("패턴 게이지 · 스킬 (메테오)")]
     [Tooltip("패턴 게이지가 0%에서 100%까지 차는 데 걸리는 시간입니다. Skill 상태가 아닐 때 항상 일정하게 찹니다. 꽉 찬 채로 Idle에 들어가면 바로 Skill로 갑니다. (단위: 초)")]
@@ -121,6 +130,10 @@ public class BloodWing : Enemy
     private float _bodyHalfWidth;
     // 화염을 막는 지형 (바닥, 벽)
     private int _breathObstacleMask;
+    // 화염 그림이 멈추는 곳 (바닥, 벽, 플레이어). 판정은 지형에서만 멈춘다.
+    private int _breathFlameStopMask;
+    // 닿는 곳 효과의 프리팹 크기. 흘러가는 방향에 맞춰 좌우만 뒤집는다.
+    private Vector3 _breathSplashScale = Vector3.one;
     // 돌진을 멈추는 지형(바닥, 벽)과 기절시키는 남은 운석을 찾는 조건
     private ContactFilter2D _dashObstacleFilter;
     private ContactFilter2D _remainingMeteorFilter;
@@ -164,6 +177,14 @@ public class BloodWing : Enemy
         }
 
         _breathObstacleMask = LayerMask.GetMask(GroundLayerName, WallLayerName);
+        _breathFlameStopMask = _breathObstacleMask | LayerMask.GetMask(TargetLayerName);
+
+        if (_breathSplash != null)
+        {
+            Vector3 splashScale = _breathSplash.transform.localScale;
+            _breathSplashScale = new Vector3(Mathf.Abs(splashScale.x), splashScale.y, splashScale.z);
+        }
+
         SetBreathFlameVisible(false);
 
         _dashObstacleFilter = new ContactFilter2D();
@@ -326,8 +347,9 @@ public class BloodWing : Enemy
         meteor.Fall(start, _meteorSpeed, _groundY, Stats.AttackPower * _meteorDamageMultiplier, gameObject, remainsOnGround);
     }
 
-    // 브레스 화염을 한 번 처리한다. 바닥·벽까지의 길이를 재고, 그 범위에 판정을 내고, 화염 그림을 맞춘다. 브레스 중 매 물리 프레임 호출한다.
+    // 브레스 화염을 한 번 처리한다. 바닥·벽까지의 길이를 재고, 그 범위에 판정을 내고, 화염 그림과 닿는 곳 효과를 맞춘다. 브레스 중 매 물리 프레임 호출한다.
     // 맞은 대상 기록을 매번 비운다. 그래서 플레이어가 맞은 뒤 무적 시간이 끝났는데도 화염에 닿아 있으면 다시 맞는다. (무적 중에는 CharacterVital이 피해를 막는다)
+    // 그림은 플레이어에 닿아도 거기서 멈추지만, 판정은 지형까지 뻗는다. (판정이 플레이어 표면에서 끝나면 경계에 걸쳐 맞지 않을 수 있다)
     // facingDirection: 보는(날아가는) 방향 (오른쪽 1, 왼쪽 -1)
     public void UpdateBreath(float facingDirection)
     {
@@ -339,15 +361,24 @@ public class BloodWing : Enemy
 
         HitChecker.ResetHitTargets();
         HitChecker.Hit(center, new Vector2(length, _breathWidth), angle, Stats.AttackPower * _breathDamageMultiplier);
-        UpdateBreathFlame(length, facingDirection);
+
+        RaycastHit2D flameHit = Physics2D.Raycast(origin, direction, _breathMaxLength, _breathFlameStopMask);
+        float flameLength = flameHit.collider != null ? Mathf.Max(flameHit.distance, MinBreathLength) : _breathMaxLength;
+        UpdateBreathFlame(flameLength, facingDirection);
+        UpdateBreathSplash(flameHit, direction, facingDirection);
     }
 
-    // 화염 그림(그레이박스)을 켜고 끈다.
+    // 화염 그림을 켜고 끈다. 끌 때는 닿는 곳 효과도 끈다. (켤 때는 다음 UpdateBreath가 닿았는지 보고 켠다)
     public void SetBreathFlameVisible(bool isVisible)
     {
         if (_breathFlame != null)
         {
             _breathFlame.gameObject.SetActive(isVisible);
+        }
+
+        if (!isVisible && _breathSplash != null)
+        {
+            _breathSplash.gameObject.SetActive(false);
         }
     }
 
@@ -431,9 +462,14 @@ public class BloodWing : Enemy
         return false;
     }
 
-    // 돌진이 벽·바닥이나 남은 운석에 부딪혔을 때의 피드백(카메라 흔들림)을 재생한다.
+    // 돌진이 벽·바닥이나 남은 운석에 부딪혔을 때의 효과음과 피드백(카메라 흔들림)을 재생한다.
     public void PlayImpactFeedbacks()
     {
+        if (_impactSound != null && SoundManager.HasInstance)
+        {
+            SoundManager.Instance.PlaySfx(_impactSound);
+        }
+
         if (_impactFeedbacks != null)
         {
             _impactFeedbacks.PlayFeedbacks();
@@ -492,11 +528,11 @@ public class BloodWing : Enemy
         return hit.collider != null ? Mathf.Max(hit.distance, MinBreathLength) : _breathMaxLength;
     }
 
-    // 화염 그림을 입에서 length만큼 뻗은 긴 직사각형으로 맞춘다.
+    // 화염 그림을 입에 놓고 화염 방향으로 돌린 뒤, 마스크로 입에서 length까지만 보이게 한다.
     // 그림은 좌우 반전을 맡는 Visuals 아래에 있으므로 각도는 오른쪽을 볼 때 기준으로 정하고, 왼쪽은 부모의 반전에 맡긴다.
     private void UpdateBreathFlame(float length, float facingDirection)
     {
-        if (_breathFlame == null || _breathFlame.sprite == null || _breathFlame.transform.parent == null)
+        if (_breathFlame == null || _breathFlame.transform.parent == null)
         {
             return;
         }
@@ -504,15 +540,76 @@ public class BloodWing : Enemy
         Transform flameTransform = _breathFlame.transform;
         Transform parent = flameTransform.parent;
         Vector2 localDirection = GetBreathDirection(1f);
-        Vector2 localCenter = _breathMouthOffset + localDirection * (length * 0.5f);
         // 루트 기준 위치를 부모 기준 로컬 값으로 바꿔 넣으므로, 그림은 부모(Visuals)와 함께 움직이고 Rigidbody 보간과도 어긋나지 않는다.
-        Vector3 worldCenter = transform.TransformPoint(new Vector3(localCenter.x * facingDirection, localCenter.y, 0f));
-        Vector3 parentScale = parent.lossyScale;
-        Vector3 spriteSize = _breathFlame.sprite.bounds.size;
+        Vector3 worldMouth = transform.TransformPoint(new Vector3(_breathMouthOffset.x * facingDirection, _breathMouthOffset.y, 0f));
 
-        flameTransform.localPosition = parent.InverseTransformPoint(worldCenter);
+        flameTransform.localPosition = parent.InverseTransformPoint(worldMouth);
         flameTransform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(localDirection.y, localDirection.x) * Mathf.Rad2Deg);
-        flameTransform.localScale = new Vector3(length / Mathf.Abs(parentScale.x) / spriteSize.x, _breathWidth / Mathf.Abs(parentScale.y) / spriteSize.y, 1f);
+        UpdateBreathFlameMask(length);
+    }
+
+    // 화염 마스크가 입 뒤쪽(BreathFlameMaskBackPadding)부터 입에서 length 떨어진 곳까지 덮게 한다.
+    // 마스크는 화염 그림의 자식이므로 화염 그림의 로컬 단위(가로 = 화염이 뻗는 방향)로 맞춘다.
+    private void UpdateBreathFlameMask(float length)
+    {
+        if (_breathFlameMask == null || _breathFlameMask.sprite == null)
+        {
+            return;
+        }
+
+        float worldPerLocal = Mathf.Abs(_breathFlame.transform.lossyScale.x);
+        float spriteWidth = _breathFlameMask.sprite.bounds.size.x;
+
+        if (worldPerLocal <= 0f || spriteWidth <= 0f)
+        {
+            return;
+        }
+
+        Transform maskTransform = _breathFlameMask.transform;
+        float start = -BreathFlameMaskBackPadding;
+        float end = length / worldPerLocal;
+        maskTransform.localPosition = new Vector3((start + end) * 0.5f, maskTransform.localPosition.y, maskTransform.localPosition.z);
+        maskTransform.localScale = new Vector3((end - start) / spriteWidth, maskTransform.localScale.y, maskTransform.localScale.z);
+    }
+
+    // 화염이 닿은 곳(hit)에 닿는 곳 효과를 놓는다. 닿은 것이 없으면 끈다.
+    // 효과는 바닥에 닿은 모습(위가 면의 바깥)으로 그려져 있어, 위쪽이 닿은 면의 바깥(법선)을 향하도록 돌린다. 벽이면 옆으로 눕는다.
+    // 효과는 오른쪽으로 더 번지게 그려져 있어, 불이 면을 따라 흘러가는 쪽이 오른쪽이 되도록 좌우를 뒤집는다.
+    // Visuals 아래에 있으므로 방향은 모두 오른쪽을 볼 때 기준으로 바꿔 계산하고, 왼쪽은 부모의 반전에 맡긴다.
+    private void UpdateBreathSplash(RaycastHit2D hit, Vector2 direction, float facingDirection)
+    {
+        if (_breathSplash == null)
+        {
+            return;
+        }
+
+        Transform splashTransform = _breathSplash.transform;
+        Transform parent = splashTransform.parent;
+        bool isHitting = hit.collider != null && parent != null;
+
+        if (_breathSplash.gameObject.activeSelf != isHitting)
+        {
+            _breathSplash.gameObject.SetActive(isHitting);
+        }
+
+        if (!isHitting)
+        {
+            return;
+        }
+
+        Vector2 normal = new Vector2(hit.normal.x * facingDirection, hit.normal.y);
+        Vector2 localDirection = new Vector2(direction.x * facingDirection, direction.y);
+        // 효과의 위쪽(0, 1)을 법선으로 돌리면 효과의 오른쪽은 (법선.y, -법선.x)가 된다.
+        Vector2 splashRight = new Vector2(normal.y, -normal.x);
+        Vector2 flowAlongSurface = localDirection - Vector2.Dot(localDirection, normal) * normal;
+        float side = Vector2.Dot(flowAlongSurface, splashRight) >= 0f ? 1f : -1f;
+
+        // 레이캐스트는 물리 위치(Movement.Position) 기준이고 그림은 보간된 Transform을 따라가므로, 닿은 점을 보스에서 떨어진 거리로 바꿔 Transform 기준으로 놓는다.
+        // (보스는 수평으로 움직이므로 닿는 점도 보스와 같이 움직이는 게 맞다)
+        Vector2 worldPoint = (Vector2)transform.position + (hit.point - Movement.Position);
+        splashTransform.localPosition = parent.InverseTransformPoint(worldPoint);
+        splashTransform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(-normal.x, normal.y) * Mathf.Rad2Deg);
+        splashTransform.localScale = new Vector3(_breathSplashScale.x * side, _breathSplashScale.y, _breathSplashScale.z);
     }
 
     // origin에서 direction(왼쪽 -1, 오른쪽 1)으로 가장 가까운 벽(Wall 레이어)의 안쪽 면 x. 벽이 없으면 fallbackX를 반환한다.
