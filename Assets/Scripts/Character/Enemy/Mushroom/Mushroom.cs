@@ -178,7 +178,7 @@ public class Mushroom : Enemy
     [SerializeField, Min(0f)] private float _reactionResultHoldDuration = 0.6f;
 
     [Header("반응속도 기믹의 준비 표시 (준비자세 동안)")]
-    [Tooltip("발사 준비자세로 기다리기 시작할 때 갓 앞에 노란 기 모으기 효과(pixelFX arcane/spell-charge, 노란색)를 켜는 피드백입니다. Visuals/MirroredVFX/Reaction/ReadyCharge_Enter의 MMF_Player를 연결합니다.\n비워 두면 준비 표시가 나오지 않습니다.")]
+    [Tooltip("발사 준비자세로 기다리기 시작할 때 몸 한가운데로 노란 빛 고리가 모여드는 효과(pixelFX arcane/energy-gather, 고리 방식)를 켜는 피드백입니다. Visuals/MirroredVFX/Reaction/ReadyCharge_Enter의 MMF_Player를 연결합니다.\n비워 두면 준비 표시가 나오지 않습니다.")]
     [SerializeField] private MMF_Player _reactionChargeEnter;
     [Tooltip("발사하기 시작할 때나 기믹이 중간에 끊길 때 기 모으기 효과를 끄는 피드백입니다. Visuals/MirroredVFX/Reaction/ReadyCharge_Exit의 MMF_Player를 연결합니다.")]
     [SerializeField] private MMF_Player _reactionChargeExit;
@@ -664,8 +664,8 @@ public class Mushroom : Enemy
         EventBus<CinematicEndedEvent>.Publish(new CinematicEndedEvent(gameObject, keepsCamera));
     }
 
-    // 발사 준비자세로 기다리기 시작할 때 MushroomReactionState가 호출한다. 갓 앞에 노란 기 모으기 효과(Visuals/MirroredVFX/Reaction/ReadyCharge)를 켠다.
-    // 보스 방향에 따라 같이 뒤집혀 늘 플레이어 쪽(날아갈 쪽)에 보인다.
+    // 발사 준비자세로 기다리기 시작할 때 MushroomReactionState가 호출한다. 몸 한가운데로 기가 모이는 효과(Visuals/MirroredVFX/Reaction/ReadyCharge)를 켠다.
+    // 효과의 가운데는 준비자세 그림(Mushroom-Attack_3)의 몸 가운데에 맞춰 두었다. (그림이 몸 판정보다 뒤로 젖혀져 있다)
     public void PlayReactionCharge()
     {
         if (_reactionChargeEnter != null)

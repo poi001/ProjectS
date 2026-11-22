@@ -14,7 +14,7 @@ using UnityEngine;
 //  그동안(실제 0.6초) 시네마틱을 유지했다가 닫는다. 그 결과로 누군가 죽으면 임팩트 프레임만 띄우고 바로 KO 연출로 넘어간다.
 // 결과 없이 끊기면(전투 종료 등) 나갈 때 바로 시네마틱을 닫는다. 플레이어의 공격 허용도 시네마틱이 끝나며 함께 꺼진다.
 // 애니메이션: 자리 배치는 Idle, 대기는 Launch 앞부분(Attack_0 ~ 3), 발사는 Launch 뒷부분(Attack_4 한 장 유지)
-// 연출: 준비자세로 기다리는 동안 갓 앞에 노란 기가 모인다. (pixelFX arcane/spell-charge, Mushroom.PlayReactionCharge / StopReactionCharge)
+// 연출: 준비자세로 기다리는 동안 몸 한가운데로 노란 빛 고리가 모여든다. (pixelFX arcane/energy-gather 고리 방식, Mushroom.PlayReactionCharge / StopReactionCharge)
 //  발사하는 동안에는 몸 뒤로 속도선이 지나간다. (Mushroom.PlaySpeedLines / StopSpeedLines)
 public class MushroomReactionState : MushroomState
 {
