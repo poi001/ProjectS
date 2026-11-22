@@ -177,6 +177,12 @@ public class Mushroom : Enemy
     [Tooltip("결과가 난 뒤 시네마틱(줌인한 화면, 검은 띠, 조작 잠금)을 유지하는 시간입니다. 슬로우 모션 길이(실제 0.6초)에 맞춰 두었고, 지나면 카메라가 원래대로 돌아갑니다. 실제 시간이며 일시정지 중에는 흐르지 않습니다. (단위: 초)\n이 결과로 플레이어나 Mushroom이 죽으면 기다리지 않고 바로 KO 연출로 넘어갑니다.")]
     [SerializeField, Min(0f)] private float _reactionResultHoldDuration = 0.6f;
 
+    [Header("반응속도 기믹의 준비 표시 (준비자세 동안)")]
+    [Tooltip("발사 준비자세로 기다리기 시작할 때 갓 앞에 노란 기 모으기 효과(pixelFX arcane/spell-charge, 노란색)를 켜는 피드백입니다. Visuals/MirroredVFX/Reaction/ReadyCharge_Enter의 MMF_Player를 연결합니다.\n비워 두면 준비 표시가 나오지 않습니다.")]
+    [SerializeField] private MMF_Player _reactionChargeEnter;
+    [Tooltip("발사하기 시작할 때나 기믹이 중간에 끊길 때 기 모으기 효과를 끄는 피드백입니다. Visuals/MirroredVFX/Reaction/ReadyCharge_Exit의 MMF_Player를 연결합니다.")]
+    [SerializeField] private MMF_Player _reactionChargeExit;
+
     [Header("스턴 (기믹에서 플레이어가 먼저 때렸을 때)")]
     [Tooltip("스턴에 걸려 있는 시간입니다. 반응속도 기믹의 발사 도중, 플레이어에게 닿기 전에 플레이어에게 피해를 입으면 걸립니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _stunDuration = 5f;
@@ -324,6 +330,17 @@ public class Mushroom : Enemy
         if (_reactionResultFeedbacks != null)
         {
             _reactionResultFeedbacks.Initialization();
+        }
+
+        // 켜는 피드백은 초기화할 때 기 모으기 효과를 꺼 둔다.
+        if (_reactionChargeEnter != null)
+        {
+            _reactionChargeEnter.Initialization();
+        }
+
+        if (_reactionChargeExit != null)
+        {
+            _reactionChargeExit.Initialization();
         }
 
         // 켜는 피드백은 초기화할 때 먼지를 꺼 둔다.
@@ -645,6 +662,25 @@ public class Mushroom : Enemy
         _reactionCinematicHoldTime = 0f;
         bool keepsCamera = Vital.IsDead || IsTargetDead;
         EventBus<CinematicEndedEvent>.Publish(new CinematicEndedEvent(gameObject, keepsCamera));
+    }
+
+    // 발사 준비자세로 기다리기 시작할 때 MushroomReactionState가 호출한다. 갓 앞에 노란 기 모으기 효과(Visuals/MirroredVFX/Reaction/ReadyCharge)를 켠다.
+    // 보스 방향에 따라 같이 뒤집혀 늘 플레이어 쪽(날아갈 쪽)에 보인다.
+    public void PlayReactionCharge()
+    {
+        if (_reactionChargeEnter != null)
+        {
+            _reactionChargeEnter.PlayFeedbacks();
+        }
+    }
+
+    // 발사하기 시작할 때나 기믹이 끊길 때 MushroomReactionState가 호출한다. 기 모으기 효과를 끈다.
+    public void StopReactionCharge()
+    {
+        if (_reactionChargeExit != null)
+        {
+            _reactionChargeExit.PlayFeedbacks();
+        }
     }
 
     // 기믹 상태가 끝날 때 MushroomReactionState가 호출한다. 결과 연출로 시네마틱을 유지할 시간이 남아 있으면 닫지 않고 두며,
