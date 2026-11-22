@@ -14,14 +14,24 @@ using UnityEngine;
 //    플레이어가 반대쪽으로 넘어가면 바로 돌아서지 못하고 미끄러지며 속도를 줄인 뒤 돌아선다. (관성)
 //    달리는 동안 몸에 닿은 플레이어가 피해를 입는다. 플레이어의 피격 무적 시간이 끝난 뒤에도 닿아 있으면 다시 맞는다.
 //  - 스턴: 런으로 벽에 부딪히면 걸린다. 부딪힌 순간의 속도가 빠를수록 오래 기절한다.
-//  - 패턴 게이지: 사망 전까지 상태와 상관없이 Gauge Fill Duration(20초)에 걸쳐 0%에서 100%까지 일정하게 찬다.
-//    꽉 차면 게이지 UI가 튕기고 푸른색으로 깜빡인다. (공통 PatternGaugeBar의 꽉 참 강조)
-//    꽉 찬 채로 Idle에 들어갔을 때 발동할 기믹은 아직 정하지 않았다. 지금은 꽉 찬 채로 머문다.
+//  - 패턴 게이지: 기믹 중이 아니면 상태와 상관없이 Gauge Fill Duration(20초)에 걸쳐 0%에서 100%까지 일정하게 차고,
+//    플레이어에게 피해를 입힐 때마다 Hit Gauge Gain(10%)만큼 더 찬다. 꽉 차면 게이지 UI가 튕기고 푸른색으로 깜빡인다. (공통 PatternGaugeBar)
+//  - 기믹: 게이지가 꽉 찬 채로 Idle이면 바닥 가운데로 순간이동해 바로 하울링(Howl)을 한다. 하울링하는 동안에는 Ghost 레이어라 플레이어의 공격이 통과하고 게이지도 그대로다.
+//    하울링이 끝나면 폭주 런과 분신이 시작되고, 그때부터 게이지가 Gimmick Drain Duration(20초)에 걸쳐 0%까지 줄어든다.
+//    기믹 중에 플레이어가 스컬독을 때리면 Damaged Gauge Loss(5%)만큼 더 줄어 기믹이 빨리 끝난다. 기믹 중에는 게이지가 차지 않는다.
+//     · 폭주 런: 런과 같지만 벽에 부딪혀도 스턴에 걸리지 않고 속도도 줄지 않는다. (SkullDogRunState가 IsGimmickActive를 보고 바꾼다)
+//       게이지가 0%가 되면 달리던 그대로 일반 런이 되어, 다음에 벽에 부딪히면 스턴에 걸린다.
+//     · 분신(SkullDogClone): 화면 테두리(바닥·양쪽 벽·위쪽)의 무작위 위치에 나타나 플레이어에게 대시하고 사라지기를 되풀이한다. 플레이어의 공격은 맞지 않는다.
+//       위쪽 테두리는 화면 끝이 아니라 보스 패턴 게이지 바(UI) 아래 가장자리까지다. 분신이 UI에 가려지지 않게 한다.
+//       대시를 끝낼 때마다 기믹이 끝났는지 확인해, 끝났으면 다시 나타나지 않는다. 스컬독이 죽으면 바로 파괴된다.
 [RequireComponent(typeof(PatternGauge))]
 public class SkullDog : Enemy
 {
     private const string GroundLayerName = "Ground";
     private const string WallLayerName = "Wall";
+    private const string GhostLayerName = "Ghost";
+    // 분신이 돌아다닐 범위(벽·바닥·천장 안쪽)를 화면 가운데에서 찾는 최대 거리 (단위: 월드 거리)
+    private const float FieldSearchDistance = 100f;
     // 돌진 중 지형을 찾을 때 한 번에 처리할 최대 결과 수
     private const int MaxCastCount = 4;
     // 돌진하다 지형에 닿을 때 콜라이더 사이에 남기는 간격 (단위: 월드 거리)
@@ -60,6 +70,8 @@ public class SkullDog : Enemy
     [SerializeField] private MMF_Player _dashLinesEnter;
     [Tooltip("돌진이 끝나거나 중간에 끊길 때 속도선을 끄는 피드백입니다. Visuals/MirroredVFX/Dash/DashLines_Exit의 MMF_Player를 연결합니다.")]
     [SerializeField] private MMF_Player _dashLinesExit;
+    [Tooltip("돌진을 시작할 때 재생하는 소리입니다. 플레이어 대시와 같은 Assets/Data/Sound/Dash_Player를 씁니다. 분신이 돌진할 때도 이 소리를 씁니다.\n비워 두면 소리가 나지 않습니다.")]
+    [SerializeField] private SoundDataSO _dashSound;
 
     [Header("런")]
     [Tooltip("런을 시작할 때의 속도입니다. 기획이 정해지기 전의 임시값입니다. (단위: 월드 거리/초)")]
@@ -74,10 +86,24 @@ public class SkullDog : Enemy
     [SerializeField, Min(0f)] private float _runDamageMultiplier = 1f;
     [Tooltip("런을 시작한 직후의 유예 시간입니다. 이 시간 동안에는 벽에 닿아도 스턴에 걸리지 않고(벽 쪽으로는 가지 못한 채 속도가 쌓이지 않습니다) 몸에 닿은 플레이어도 피해를 입지 않습니다. 시간이 지나면 벽 충돌과 몸 충돌 판정이 정상으로 들어갑니다. 벽에 붙은 채 런이 나왔을 때 바로 스턴에 걸리는 것을 막습니다. 0이면 유예 없이 시작합니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _runGraceDuration = 0.5f;
+    [Tooltip("런을 시작할 때 뒷발 먼지를 켜는 피드백입니다. Visuals/MirroredVFX/Run/RunDust_Enter의 MMF_Player를 연결합니다. (Mushroom 런과 같은 pixelFX impacts/run-dust) 폭주 런에도 나옵니다.\n비워 두면 먼지가 나오지 않습니다.")]
+    [SerializeField] private MMF_Player _runDustEnter;
+    [Tooltip("런이 끝나거나 중간에 끊길 때 뒷발 먼지를 끄는 피드백입니다. Visuals/MirroredVFX/Run/RunDust_Exit의 MMF_Player를 연결합니다.")]
+    [SerializeField] private MMF_Player _runDustExit;
 
     [Header("패턴 게이지")]
-    [Tooltip("패턴 게이지가 0%에서 100%까지 차는 데 걸리는 시간입니다. 사망 전까지 상태와 상관없이 일정하게 찹니다. 꽉 차면 게이지 UI가 푸른색으로 깜빡입니다. (단위: 초)")]
+    [Tooltip("패턴 게이지가 0%에서 100%까지 차는 데 걸리는 시간입니다. 기믹(하울링, 폭주 런) 중이 아니면 상태와 상관없이 일정하게 찹니다. 꽉 차면 게이지 UI가 푸른색으로 깜빡이고, 꽉 찬 채로 Idle이면 기믹(하울링)에 들어갑니다. (단위: 초)")]
     [SerializeField, Min(0.01f)] private float _gaugeFillDuration = 20f;
+    [Tooltip("스컬독이 플레이어에게 피해를 입힐 때마다(대시, 런) 패턴 게이지가 차는 양입니다. 게이지 최대값이 100이면 퍼센트와 같습니다. 기믹 중에는 차지 않고, 분신이 입힌 피해로도 차지 않습니다.")]
+    [SerializeField, Min(0f)] private float _hitGaugeGain = 10f;
+
+    [Header("패턴 게이지 기믹 (하울링 · 폭주 런 · 분신)")]
+    [Tooltip("기믹(폭주 런과 분신) 동안 패턴 게이지가 100%에서 0%까지 줄어드는 데 걸리는 시간입니다. 하울링이 끝난 순간부터 줄기 시작하고, 0%가 되면 기믹이 끝나 일반 런으로 이어집니다. (단위: 초)")]
+    [SerializeField, Min(0.01f)] private float _gimmickDrainDuration = 20f;
+    [Tooltip("기믹(폭주 런과 분신) 중에 플레이어가 스컬독을 때릴 때마다 패턴 게이지가 줄어드는 양입니다. 게이지 최대값이 100이면 퍼센트와 같습니다. 때릴수록 기믹이 빨리 끝납니다.")]
+    [SerializeField, Min(0f)] private float _damagedGaugeLoss = 5f;
+    [Tooltip("기믹 중에 나타나는 분신 프리팹입니다. Assets/Prefabs/FX/SkullDog/SkullDogClone을 연결합니다. 분신의 대시 속도·숨는 시간·피해 배율·색은 그 프리팹에서 조절합니다.\n비워 두면 분신 없이 폭주 런만 합니다.")]
+    [SerializeField] private SkullDogClone _clonePrefab;
 
     [Header("스턴")]
     [Tooltip("런을 시작할 때의 속도(Run Start Speed) 이하로 벽에 부딪혔을 때의 스턴 시간입니다. 기획이 정해지기 전의 임시값입니다. (단위: 초)")]
@@ -94,12 +120,29 @@ public class SkullDog : Enemy
     private readonly RaycastHit2D[] _castResults = new RaycastHit2D[MaxCastCount];
     // Idle 없이 이어진 이번 연속 대시에서 지금까지 돌진한 횟수. Idle에서 대시를 고를 때 0으로 되돌린다.
     private int _dashChainCount;
+    // 하울링 동안 Ghost 레이어로 바꿔 둔 상태인지와, 되돌릴 원래 레이어 (루트 몸 콜라이더, 피격 판정 콜라이더)
+    private bool _isGhost;
+    private int _ghostLayer;
+    private int _bodyLayer;
+    private int _hurtboxLayer;
+    // 기믹 중에 쓰는 분신. 전투 시작 때 하나 만들어 꺼 두고, 기믹마다 다시 쓴다. 스컬독이 죽거나 Release되면 파괴한다.
+    private SkullDogClone _clone;
+    // 순간이동할 때 물리 위치를 바로 옮기는 데 쓴다.
+    private Rigidbody2D _rigidbody;
 
     public SkullDogDashReadyState DashReadyState { get; private set; }
     public SkullDogDashState DashState { get; private set; }
     public SkullDogDashEndState DashEndState { get; private set; }
     public SkullDogRunState RunState { get; private set; }
     public SkullDogStunState StunState { get; private set; }
+    public SkullDogHowlState HowlState { get; private set; }
+
+    // 기믹(폭주 런과 분신)이 진행 중인지. 하울링이 끝난 순간부터 게이지가 0%가 되거나 기믹이 끊길 때까지 true다. (하울링 중에는 false)
+    public bool IsGimmickActive { get; private set; }
+    // 분신이 돌아다닐 수 있는 범위. 양쪽 벽·바닥의 안쪽 면과, 위쪽은 보스 패턴 게이지 바(UI)의 아래 가장자리다.
+    // (UI를 찾지 못하면 천장 또는 화면 위쪽 끝) 전투 시작 때 한 번 계산한다. (카메라는 고정이다)
+    public Vector2 FieldMin { get; private set; }
+    public Vector2 FieldMax { get; private set; }
 
     public HitboxShape BodyHitbox => _bodyHitbox;
     public float DashReadyDuration => _dashReadyDuration;
@@ -156,12 +199,62 @@ public class SkullDog : Enemy
             _dashLinesExit.Initialization();
         }
 
+        if (_runDustEnter != null)
+        {
+            _runDustEnter.Initialization();
+        }
+
+        if (_runDustExit != null)
+        {
+            _runDustExit.Initialization();
+        }
+
+        _rigidbody = GetComponent<Rigidbody2D>();
+        IsGimmickActive = false;
+        _isGhost = false;
+        _ghostLayer = LayerMask.NameToLayer(GhostLayerName);
+        _bodyLayer = gameObject.layer;
+        _hurtboxLayer = Hurtbox != null ? Hurtbox.gameObject.layer : gameObject.layer;
+
+        if (_ghostLayer < 0)
+        {
+            Debug.LogError($"SkullDog: '{GhostLayerName}' 레이어가 없어 하울링 중에도 공격을 맞습니다.", this);
+        }
+
+        CalculateField();
+
+        if (_clonePrefab == null)
+        {
+            Debug.LogWarning("SkullDog에 분신 프리팹이 없어 기믹 중 분신이 나오지 않습니다.", this);
+        }
+        else
+        {
+            // 첫 기믹 때 생성 비용으로 끊기지 않도록 미리 만들어 꺼 둔다.
+            _clone = Instantiate(_clonePrefab);
+            _clone.Initialize(this);
+        }
+
         return true;
     }
 
-    // 충돌 피드백(카메라 흔들림) 도중에 소환 해제되어도 흔들림이 남지 않게 멈춘다.
+    protected override void OnInitCompleted()
+    {
+        base.OnInitCompleted();
+        Vital.Damaged += OnDamaged;
+        Vital.Died += OnDiedInGimmick;
+    }
+
+    // 충돌 피드백(카메라 흔들림) 도중에 소환 해제되어도 흔들림이 남지 않게 멈춘다. 분신도 함께 없앤다.
+    // 하울링 도중에 해제되면 상태의 Exit가 불리지 않으므로 Ghost 레이어도 여기서 되돌린다.
     protected override void OnRelease()
     {
+        Vital.Damaged -= OnDamaged;
+        Vital.Died -= OnDiedInGimmick;
+
+        IsGimmickActive = false;
+        DestroyClone();
+        SetGhost(false);
+
         if (_impactFeedbacks != null)
         {
             _impactFeedbacks.StopFeedbacks();
@@ -170,10 +263,31 @@ public class SkullDog : Enemy
         base.OnRelease();
     }
 
-    // 패턴 게이지를 채운다. Gauge Fill Duration에 걸쳐 0%에서 100%까지 일정하게 차고, 꽉 차면 더 오르지 않는다. 죽은 뒤에는 차지 않는다.
+    // 패턴 게이지를 시간에 따라 채우거나 줄인다. 죽은 뒤에는 바뀌지 않는다.
+    //  - 기믹(폭주 런과 분신) 중: Gimmick Drain Duration에 걸쳐 100%에서 0%까지 일정하게 준다. 0%가 되면 기믹이 끝난다.
+    //  - 하울링 중: 그대로 둔다.
+    //  - 그 외: Gauge Fill Duration에 걸쳐 0%에서 100%까지 일정하게 찬다. 꽉 차면 더 오르지 않는다.
     protected override void OnUpdate()
     {
         if (Vital.IsDead)
+        {
+            return;
+        }
+
+        if (IsGimmickActive)
+        {
+            PatternGauge.Reduce(PatternGauge.MaxValue / _gimmickDrainDuration * Time.deltaTime);
+
+            // 시간으로 줄었든 플레이어에게 맞아 줄었든(OnDamaged) 0%가 되면 여기서 끝낸다.
+            if (PatternGauge.CurrentValue <= 0f)
+            {
+                IsGimmickActive = false;
+            }
+
+            return;
+        }
+
+        if (CurrentState == HowlState)
         {
             return;
         }
@@ -189,6 +303,235 @@ public class SkullDog : Enemy
         DashEndState = new SkullDogDashEndState(this, stateMachine);
         RunState = new SkullDogRunState(this, stateMachine);
         StunState = new SkullDogStunState(this, stateMachine);
+        HowlState = new SkullDogHowlState(this, stateMachine);
+    }
+
+    // Idle 중 매 프레임 호출된다. 패턴 게이지가 꽉 찼으면 Idle 시간을 기다리지 않고 바로 기믹(하울링)에 들어간다.
+    // (Idle이 아닌 상태에서는 꽉 차도 들어가지 않고, 그 패턴이 끝나 Idle에 들어갈 때 들어간다)
+    public override bool TryInterruptIdle()
+    {
+        if (!PatternGauge.IsFull)
+        {
+            return false;
+        }
+
+        stateMachine.ChangeState(HowlState);
+        return true;
+    }
+
+    // 하울링이 끝났을 때 SkullDogHowlState가 호출한다. 기믹을 시작한다: 분신을 내보내고 폭주 런으로 들어간다.
+    // 이때부터 게이지가 줄기 시작한다. (OnUpdate)
+    public void BeginGimmick()
+    {
+        IsGimmickActive = true;
+
+        if (_clone != null)
+        {
+            _clone.Begin();
+        }
+
+        stateMachine.ChangeState(RunState);
+    }
+
+    // 폭주 런이 중간에 끊겼을 때(플레이어 사망, SkullDog 사망 등) SkullDogRunState가 호출한다. 기믹을 그 자리에서 끝낸다.
+    // 게이지를 비우고 분신을 바로 거둔다. 기믹 중이 아니면 아무것도 하지 않는다. (게이지가 0%가 되어 끝난 뒤의 일반 런 포함)
+    public void CancelGimmick()
+    {
+        if (!IsGimmickActive)
+        {
+            return;
+        }
+
+        IsGimmickActive = false;
+        PatternGauge.SetValue(0f);
+
+        if (_clone != null)
+        {
+            _clone.Dismiss();
+        }
+    }
+
+    // 스컬독이 플레이어에게 피해를 입혔을 때 대시·런 상태가 호출한다. 맞힌 수만큼 패턴 게이지를 채운다.
+    // 기믹(하울링 포함) 중에는 채우지 않는다.
+    public void AddGaugeForHits(int hitCount)
+    {
+        if (hitCount <= 0 || IsGimmickActive || CurrentState == HowlState)
+        {
+            return;
+        }
+
+        PatternGauge.Add(_hitGaugeGain * hitCount);
+    }
+
+    // 기믹에 들어갈 때 SkullDogHowlState가 호출한다. 화면 가로 가운데(양쪽 벽 사이 가운데)의 바닥 위로 순간이동한다.
+    // 발(몸 콜라이더 아래쪽)이 바닥 면에 닿는 높이에 놓고, 움직임을 멈춘다.
+    public void TeleportToFieldCenter()
+    {
+        Vector2 position = Movement.Position;
+        float feetOffset = position.y - BodyCollider.bounds.min.y;
+        Vector2 target = new Vector2((FieldMin.x + FieldMax.x) * 0.5f, FieldMin.y + feetOffset);
+
+        _rigidbody.position = target;
+        transform.position = new Vector3(target.x, target.y, transform.position.z);
+        Movement.SetVelocity(Vector2.zero);
+    }
+
+    // 돌진을 시작할 때 재생한다. SkullDogDashState와 분신(SkullDogClone)이 호출한다.
+    public void PlayDashSound()
+    {
+        if (_dashSound != null && SoundManager.HasInstance)
+        {
+            SoundManager.Instance.PlaySfx(_dashSound);
+        }
+    }
+
+    // 런을 시작할 때 SkullDogRunState가 호출한다. 뒷발 먼지(Visuals/MirroredVFX/Run/RunDust)를 켠다. 보스 방향에 따라 같이 뒤집힌다.
+    public void PlayRunDust()
+    {
+        if (_runDustEnter != null)
+        {
+            _runDustEnter.PlayFeedbacks();
+        }
+    }
+
+    // 런이 끝나거나 끊길 때 SkullDogRunState가 호출한다. 뒷발 먼지를 끈다.
+    public void StopRunDust()
+    {
+        if (_runDustExit != null)
+        {
+            _runDustExit.PlayFeedbacks();
+        }
+    }
+
+    // 하울링하는 동안 몸 콜라이더(루트)와 피격 판정 콜라이더(자식 Collider)를 Ghost 레이어로 바꾸거나 원래 레이어로 되돌린다.
+    // Ghost는 바닥 말고는 충돌하지 않고, 공격 판정은 Enemy 레이어만 조회하므로 플레이어의 공격이 통과한다. (GDD 6.2)
+    public void SetGhost(bool isGhost)
+    {
+        if (_isGhost == isGhost || _ghostLayer < 0)
+        {
+            return;
+        }
+
+        _isGhost = isGhost;
+        gameObject.layer = isGhost ? _ghostLayer : _bodyLayer;
+
+        if (Hurtbox != null)
+        {
+            Hurtbox.gameObject.layer = isGhost ? _ghostLayer : _hurtboxLayer;
+        }
+    }
+
+    // 기믹 중에 플레이어에게 피해를 입으면 패턴 게이지가 줄어든다. 0%가 되면 OnUpdate가 기믹을 끝낸다.
+    private void OnDamaged(DamageInfo damageInfo)
+    {
+        if (IsGimmickActive)
+        {
+            PatternGauge.Reduce(_damagedGaugeLoss);
+        }
+    }
+
+    // 스컬독이 죽으면 분신을 바로 파괴한다. (기믹이 끝난 뒤 마지막 대시를 하던 분신도 포함)
+    private void OnDiedInGimmick()
+    {
+        IsGimmickActive = false;
+        DestroyClone();
+    }
+
+    private void DestroyClone()
+    {
+        if (_clone != null)
+        {
+            Destroy(_clone.gameObject);
+            _clone = null;
+        }
+    }
+
+    // 분신이 돌아다닐 범위를 계산한다. 메인 카메라가 비추는 화면에서, 화면 가운데를 기준으로 양쪽 벽·바닥·천장의 안쪽 면을 찾는다.
+    // 찾지 못한 쪽은 화면 가장자리를 쓴다. (천장이 없는 씬 등)
+    private void CalculateField()
+    {
+        Camera mainCamera = Camera.main;
+
+        if (mainCamera == null)
+        {
+            Debug.LogWarning($"{name}: 메인 카메라(MainCamera 태그)가 없어 분신이 스컬독 주변에만 나타납니다.", this);
+            FieldMin = (Vector2)transform.position - Vector2.one;
+            FieldMax = (Vector2)transform.position + Vector2.one;
+            return;
+        }
+
+        Vector2 center = mainCamera.transform.position;
+        float halfHeight = mainCamera.orthographicSize;
+        float halfWidth = halfHeight * mainCamera.aspect;
+        int surfaceMask = LayerMask.GetMask(GroundLayerName, WallLayerName);
+
+        float left = FindSurface(center, Vector2.left, surfaceMask, center.x - halfWidth).x;
+        float right = FindSurface(center, Vector2.right, surfaceMask, center.x + halfWidth).x;
+        float bottom = FindSurface(center, Vector2.down, surfaceMask, center.y - halfHeight).y;
+        float top = FindSurface(center, Vector2.up, surfaceMask, center.y + halfHeight).y;
+
+        // 벽이 화면 밖에 있어도 화면 안에서만 나타나게 화면 가장자리로 자른다.
+        FieldMin = new Vector2(Mathf.Max(left, center.x - halfWidth), Mathf.Max(bottom, center.y - halfHeight));
+        FieldMax = new Vector2(Mathf.Min(right, center.x + halfWidth), Mathf.Min(top, center.y + halfHeight));
+
+        // 위쪽은 보스 체력바 아래의 패턴 게이지 바에 가리지 않도록 그 아래 가장자리까지로 낮춘다.
+        if (TryGetPatternGaugeBarBottom(mainCamera, out float barBottom))
+        {
+            FieldMax = new Vector2(FieldMax.x, Mathf.Min(FieldMax.y, barBottom));
+        }
+    }
+
+    // 보스 패턴 게이지 바(UI)의 아래 가장자리가 가리키는 월드 높이를 구한다. 바를 찾지 못하면 false다.
+    // 바의 네 모서리를 UI 카메라의 화면 좌표로 바꾼 뒤 메인 카메라의 월드 좌표로 바꿔, 가장 낮은 높이를 쓴다.
+    // UI 배치(Canvas의 레이아웃)가 아직 계산되지 않았을 수 있어 먼저 갱신한다.
+    private bool TryGetPatternGaugeBarBottom(Camera mainCamera, out float bottomY)
+    {
+        bottomY = 0f;
+        PatternGaugeBar bar = FindFirstObjectByType<PatternGaugeBar>(FindObjectsInactive.Include);
+
+        if (bar == null)
+        {
+            Debug.LogWarning($"{name}: 씬에서 PatternGaugeBar를 찾지 못해 분신이 화면 위쪽 끝까지 나타납니다. (보스 체력바에 가려질 수 있습니다)", this);
+            return false;
+        }
+
+        Canvas canvas = bar.GetComponentInParent<Canvas>();
+
+        if (canvas == null)
+        {
+            return false;
+        }
+
+        canvas = canvas.rootCanvas;
+        Canvas.ForceUpdateCanvases();
+
+        // Screen Space - Overlay면 UI 카메라가 없다. (null이면 월드 좌표가 곧 화면 좌표)
+        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        Vector3[] corners = new Vector3[4];
+        ((RectTransform)bar.transform).GetWorldCorners(corners);
+        bottomY = float.MaxValue;
+
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(uiCamera, corners[i]);
+            Vector3 worldPoint = mainCamera.ScreenToWorldPoint(new Vector3(screenPoint.x, screenPoint.y, Mathf.Abs(mainCamera.transform.position.z)));
+            bottomY = Mathf.Min(bottomY, worldPoint.y);
+        }
+
+        return true;
+    }
+
+    // origin에서 direction(가로 또는 세로 단위 벡터)으로 가장 가까운 지형 면의 위치. 없으면 그 축의 값이 fallback인 위치를 반환한다.
+    private static Vector2 FindSurface(Vector2 origin, Vector2 direction, int surfaceMask, float fallback)
+    {
+        RaycastHit2D hit = Physics2D.Raycast(origin, direction, FieldSearchDistance, surfaceMask);
+
+        if (hit.collider != null)
+        {
+            return hit.point;
+        }
+
+        return direction.x != 0f ? new Vector2(fallback, origin.y) : new Vector2(origin.x, fallback);
     }
 
     // Idle 시간이 끝났을 때 호출된다. (플레이어가 죽어 있는 동안에는 호출되지 않는다)

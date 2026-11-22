@@ -14,4 +14,6 @@ public class SkullDogAnimation : EnemyAnimation
     public static readonly int Run = Animator.StringToHash("Run");
     // 스턴. Sprite Sheet_11 ~ 14를 반복 재생한다.
     public static readonly int Stun = Animator.StringToHash("Stun");
+    // 하울링(기믹 시작). SkullDog_Howl 시트 12장을 반복하지 않고 한 번 재생한다. 클립 길이가 하울링 시간이다.
+    public static readonly int Howl = Animator.StringToHash("Howl");
 }

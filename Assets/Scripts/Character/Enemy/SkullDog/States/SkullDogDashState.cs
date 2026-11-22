@@ -54,6 +54,7 @@ public class SkullDogDashState : SkullDogState
         skullDog.Animation.UpdateFacing(_facing);
         skullDog.Animation.Play(SkullDogAnimation.Dash);
         skullDog.PlayDashLines(_direction);
+        skullDog.PlayDashSound();
     }
 
     // 돌진이 중간에 끊기는 경우(플레이어 사망, SkullDog 사망 등)에도 그 자리에 멈추고 중력을 되돌리며 속도선을 끈다.
@@ -67,7 +68,9 @@ public class SkullDogDashState : SkullDogState
     public override void PhysicsUpdate()
     {
         // 지금 자리의 몸 판정을 먼저 낸다. 도착한 자리에서도 마지막으로 판정한다.
-        skullDog.HitChecker.Hit(skullDog.BodyHitbox, skullDog.DashDamage, _facing);
+        // 맞혔으면 패턴 게이지가 찬다.
+        int hitCount = skullDog.HitChecker.Hit(skullDog.BodyHitbox, skullDog.DashDamage, _facing);
+        skullDog.AddGaugeForHits(hitCount);
 
         if (_isArriving || Time.time - _enterTime >= skullDog.DashMaxDuration)
         {
