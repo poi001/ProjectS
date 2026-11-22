@@ -3,7 +3,7 @@ using UnityEngine;
 
 // 플레이어 컴포넌트 참조와 초기화 순서, 상태 인스턴스를 관리하고 상태기계를 구동한다.
 // 상태 전환 판단은 각 상태가, 물리 처리는 CharacterMovement가, 입력과 입력 버퍼는 PlayerInputHandler가 담당한다.
-[RequireComponent(typeof(PlayerInputHandler), typeof(CharacterVital))]
+[RequireComponent(typeof(PlayerInputHandler))]
 public class Player : Character
 {
     // 공격자와 x 차이가 이보다 작으면 좌우를 구분할 수 없는 것으로 본다.
@@ -110,7 +110,6 @@ public class Player : Character
     private float _cinematicSlideElapsedTime;
 
     public PlayerInputHandler InputHandler { get; private set; }
-    public CharacterVital Vital { get; private set; }
     public new PlayerAnimation Animation => _playerAnimation;
     public PlayerStatsSO Stats => _stats;
     public Vector2 KnockbackVelocity => _knockbackVelocity;
@@ -194,7 +193,6 @@ public class Player : Character
         }
 
         InputHandler = GetComponent<PlayerInputHandler>();
-        Vital = GetComponent<CharacterVital>();
         _playerAnimation = GetComponentInChildren<PlayerAnimation>();
 
         if (_playerAnimation == null)
@@ -235,6 +233,8 @@ public class Player : Character
         base.OnInitCompleted();
         Vital.Damaged += OnDamaged;
         Vital.Died += OnDied;
+        Vital.DeathAverted += OnDeathAverted;
+        EventBus<CharacterDiedEvent>.Subscribe(OnCharacterDied);
         EventBus<CinematicStartedEvent>.Subscribe(OnCinematicStarted);
         EventBus<CinematicEndedEvent>.Subscribe(OnCinematicEnded);
         EventBus<GamePauseChangedEvent>.Subscribe(OnGamePauseChanged);
@@ -260,6 +260,8 @@ public class Player : Character
 
         Vital.Damaged -= OnDamaged;
         Vital.Died -= OnDied;
+        Vital.DeathAverted -= OnDeathAverted;
+        EventBus<CharacterDiedEvent>.Unsubscribe(OnCharacterDied);
         EventBus<CinematicStartedEvent>.Unsubscribe(OnCinematicStarted);
         EventBus<CinematicEndedEvent>.Unsubscribe(OnCinematicEnded);
         EventBus<GamePauseChangedEvent>.Unsubscribe(OnGamePauseChanged);
@@ -541,6 +543,8 @@ public class Player : Character
     {
         Movement.SetMoveSpeed(_stats.MoveSpeed);
         Vital.Initialize(_stats.MaxHealth);
+        // 같은 프레임에 보스도 죽으면 플레이어가 이기므로, 치명 피해의 사망 확정을 프레임 끝까지 미룬다. (GDD 6.4)
+        Vital.SetDefersDeath(true);
     }
 
     // 콤보 공격 설정이 비어 있으면 지상 공격이 판정을 내지 못하므로 알린다.
@@ -605,6 +609,17 @@ public class Player : Character
             return;
         }
 
+        ApplyHitReaction(damageInfo);
+    }
+
+    // 같은 프레임에 보스도 죽어 치명 피해로 죽지 않고 살아남았을 때. 치명 피해를 맞은 순간 건너뛴 피격 반응(무적, 피격 상태)을 지금 한다. (GDD 6.4)
+    private void OnDeathAverted(DamageInfo damageInfo)
+    {
+        ApplyHitReaction(damageInfo);
+    }
+
+    private void ApplyHitReaction(DamageInfo damageInfo)
+    {
         Vital.SetInvincible(_invincibleDuration);
         HitState.SetKnockbackDirection(GetKnockbackDirection(damageInfo));
         _stateMachine.ChangeState(HitState);
@@ -628,5 +643,14 @@ public class Player : Character
     private void OnDied()
     {
         _stateMachine.ChangeState(DeadState);
+    }
+
+    // 보스가 죽으면 승부가 났으므로 이후 피해로 체력이 1 아래로 내려가지 않게 한다. 잡몹의 죽음은 승부와 무관하다. (GDD 6.4)
+    private void OnCharacterDied(CharacterDiedEvent diedEvent)
+    {
+        if (diedEvent.Target != null && diedEvent.Target.TryGetComponent(out Enemy enemy) && enemy.IsBoss)
+        {
+            Vital.SetOpponentDead();
+        }
     }
 }

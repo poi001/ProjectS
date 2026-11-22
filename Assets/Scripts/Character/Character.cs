@@ -2,7 +2,8 @@ using UnityEngine;
 
 // 플레이어/적 공통 베이스. 공용 컴포넌트(이동, 애니메이션) 참조를 보관한다.
 // 상태기계는 상태 타입이 캐릭터마다 다르므로 각 자식 클래스(Player, Enemy)가 직접 소유하고 구동한다.
-// 체력/피격/사망은 공용 CharacterVital 컴포넌트가 담당한다. (각 캐릭터가 GetComponent로 참조한다.)
+// 체력/피격/사망은 공용 CharacterVital 컴포넌트가 담당한다. (Vital 프로퍼티로 참조한다.)
+// 승부 규칙(GDD 6.4): 상대가 죽으면 각 캐릭터가 Vital.SetOpponentDead로 알려, 이후 피해로 체력이 1 아래로 내려가지 않게 한다. (Player, Enemy가 각자 처리)
 // 콜라이더 구성은 GDD 6.7을 따른다.
 //  - 루트: Character 레이어의 Box Collider(트리거 아님). 바닥/벽 충돌 확인용이며 피격 판정에는 쓰지 않는다.
 //  - 자식 "Collider": Player 또는 Enemy 레이어의 콜라이더(트리거). 피격 판정용이다.
@@ -12,7 +13,7 @@ using UnityEngine;
 //  - Init: OnInit(참조·스탯·상태 준비와 설정 확인) → 모두 성공하면 OnInitCompleted(이벤트 구독·상태기계 시작)
 //  - Release: OnRelease(이벤트 구독 해제). 오브젝트가 파괴될 때 아직 Release되지 않았으면 자동으로 호출한다.
 //  - Init 전에는 자식 클래스가 Update/FixedUpdate에서 IsInitialized를 확인해 아무것도 하지 않는다.
-[RequireComponent(typeof(CharacterMovement))]
+[RequireComponent(typeof(CharacterMovement), typeof(CharacterVital))]
 public abstract class Character : MonoBehaviour, ICharacterLifecycle
 {
     private const string BodyLayerName = "Character";
@@ -25,6 +26,8 @@ public abstract class Character : MonoBehaviour, ICharacterLifecycle
     [SerializeField] private bool _showHitRange;
 
     public CharacterMovement Movement { get; private set; }
+    // 체력, 피격, 사망을 담당하는 공용 컴포넌트
+    public CharacterVital Vital { get; private set; }
     public CharacterAnimation Animation { get; private set; }
     // 루트의 바닥/벽 충돌용 콜라이더
     public Collider2D BodyCollider { get; private set; }
@@ -99,6 +102,7 @@ public abstract class Character : MonoBehaviour, ICharacterLifecycle
     protected virtual bool OnInit(BattleContext context)
     {
         Movement = GetComponent<CharacterMovement>();
+        Vital = GetComponent<CharacterVital>();
         Animation = GetComponentInChildren<CharacterAnimation>();
 
         if (Animation == null)

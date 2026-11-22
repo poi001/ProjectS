@@ -6,7 +6,6 @@ using UnityEngine;
 // 페이즈: 다음 페이즈가 남은 채로 체력을 모두 잃으면 죽지 않고 페이즈 전환을 한다. (모든 보스 공통)
 //  - 체력 소진 → OnPhaseHealthDepleted(보스별 전환 연출) → StartPhaseRefill(체력 충전, 공통) → 다음 페이즈 시작(OnPhaseStarted) → Idle
 //  - 전환이 끝날 때까지 피해를 입지 않는다. 마지막 페이즈에서 체력을 모두 잃으면 기존처럼 사망한다.
-[RequireComponent(typeof(CharacterVital))]
 public abstract class Enemy : Character
 {
     [Header("스탯")]
@@ -32,7 +31,6 @@ public abstract class Enemy : Character
     // 부모의 Animation 자동 프로퍼티와 직렬화 필드 이름이 겹치지 않도록 별도 필드에 보관한다.
     private EnemyAnimation _enemyAnimation;
 
-    public CharacterVital Vital { get; private set; }
     // 패턴 게이지. 게이지를 쓰는 보스만 프리팹 루트에 PatternGauge를 붙이며, 없으면 null이다. 사용 방법은 보스마다 다르다.
     public PatternGauge PatternGauge { get; private set; }
     // 머리 위 상태 VFX(기절, 감지, 버프 등) 표시. 프리팹 루트에 StatusVfxDisplay가 없으면 null이며, 그러면 상태 VFX를 띄우지 않는다.
@@ -67,7 +65,8 @@ public abstract class Enemy : Character
     }
 
     // 타깃이 없거나 죽었다면 패턴을 시전하지 않고 Idle을 유지한다. (GDD 6.6)
-    public bool IsTargetDead => Target == null || Target.Vital.IsDead;
+    // 사망 확정을 프레임 끝까지 미루는 중(치명 피해를 입은 프레임)에도 죽은 것으로 본다. (GDD 6.4)
+    public bool IsTargetDead => Target == null || Target.Vital.IsDead || Target.Vital.IsDeathPending;
     // 타깃이 있는 가로 방향 (오른쪽 1, 왼쪽 -1)
     public float DirectionToTarget => Target.transform.position.x >= transform.position.x ? 1f : -1f;
     public float DistanceToTarget => Mathf.Abs(Target.transform.position.x - transform.position.x);
@@ -90,7 +89,6 @@ public abstract class Enemy : Character
             return false;
         }
 
-        Vital = GetComponent<CharacterVital>();
         _enemyAnimation = GetComponentInChildren<EnemyAnimation>();
 
         // 게이지가 없는 보스는 null로 둔다. (TryGetComponent는 없을 때 진짜 null을 준다.)
@@ -324,8 +322,11 @@ public abstract class Enemy : Character
 
     // 플레이어가 죽으면 진행 중인 패턴을 멈추고 Idle을 유지한다. (IdleState는 타깃이 죽어 있는 동안 다음 패턴으로 넘어가지 않는다.)
     // 페이즈 전환 중이면 끊지 않는다. 전환이 끝나 Idle로 간 뒤 그대로 머문다.
+    // 승부가 났으므로 이후 피해로 체력이 1 아래로 내려가지 않게 한다. (GDD 6.4)
     private void OnTargetDied()
     {
+        Vital.SetOpponentDead();
+
         if (Vital.IsDead || IsPhaseTransitioning)
         {
             return;
