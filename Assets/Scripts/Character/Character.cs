@@ -83,13 +83,6 @@ public abstract class Character : MonoBehaviour, ICharacterLifecycle
 
         _isDeathFinishedNotified = true;
         EventBus<CharacterDeathFinishedEvent>.Publish(new CharacterDeathFinishedEvent(gameObject));
-        OnDeathFinished();
-    }
-
-    // 사망 애니메이션이 끝났을 때 한 번 호출된다. (CharacterDeathFinishedEvent를 발행한 직후)
-    // 사망 연출이 끝난 뒤에 할 일(적의 결석 소환 등)이 있는 자식 클래스가 오버라이드한다.
-    protected virtual void OnDeathFinished()
-    {
     }
 
     public void Release()

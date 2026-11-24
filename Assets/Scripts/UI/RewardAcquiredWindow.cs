@@ -2,11 +2,13 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// 결석을 주웠을 때 뜨는 획득 창 (임시 그레이박스, GDD 6.6). BattleUI 프리팹에 중첩해 둔다.
-//  - RewardStoneCollectedEvent를 받으면 패널을 채우고 연다. 패널은 룬 선택 창의 패널 하나와 같은 모양이다. (아이콘 → 종류 팻말 → 설명창)
+// 리워드 결석을 주워 기본 동작을 얻었을 때 뜨는 획득 창 (임시 그레이박스, GDD 6.6). BattleUI 프리팹에 중첩해 둔다.
+//  - AbilityRewardAcquiredEvent를 받으면 패널을 채우고 연다. 패널은 룬 선택 창의 패널 하나와 같은 모양이다. (아이콘 → 종류 팻말 → 설명창)
+//  - 액티브 룬 결석은 창 없이 바로 얻고 패시브 룬 결석은 룬 선택 창을 열므로, 지금 이 창을 여는 것은 리워드 결석뿐이다.
+//    (액티브 룬·패시브 룬 팻말 설정은 나중에 다른 보상에도 이 창을 쓸 때를 위해 남겨 두었다)
 //  - 닫기는 Content 아래의 UIClosePrompt가 맡는다. (Z키 또는 화면 클릭, 깜빡이는 안내 글)
 //  - 열린 동안 게임을 일시정지한다. (UIWindow의 Pauses Game)
-// 실제 획득 처리(동작 해금, 룬 지급)는 아직 없다. 지금은 주운 것을 보여 주기만 한다.
+// 동작 해금은 BattleResultManager가 이 창을 열기 전에 끝낸다. 이 창은 얻은 것을 보여 주기만 한다.
 public class RewardAcquiredWindow : UIWindow
 {
     [Header("참조")]
@@ -35,16 +37,16 @@ public class RewardAcquiredWindow : UIWindow
 
     private void OnEnable()
     {
-        EventBus<RewardStoneCollectedEvent>.Subscribe(OnRewardStoneCollected);
+        EventBus<AbilityRewardAcquiredEvent>.Subscribe(OnAbilityRewardAcquired);
     }
 
     protected override void OnDisable()
     {
-        EventBus<RewardStoneCollectedEvent>.Unsubscribe(OnRewardStoneCollected);
+        EventBus<AbilityRewardAcquiredEvent>.Unsubscribe(OnAbilityRewardAcquired);
         base.OnDisable();
     }
 
-    // 주운 보상으로 패널을 채우고 창을 연다. 이미 열려 있으면 무시한다.
+    // 얻은 보상으로 패널을 채우고 창을 연다. 이미 열려 있으면 무시한다.
     public void Show(RewardType type, Sprite icon, string description)
     {
         if (IsOpen)
@@ -75,9 +77,9 @@ public class RewardAcquiredWindow : UIWindow
         Open();
     }
 
-    private void OnRewardStoneCollected(RewardStoneCollectedEvent collectedEvent)
+    private void OnAbilityRewardAcquired(AbilityRewardAcquiredEvent acquiredEvent)
     {
-        Show(collectedEvent.Type, collectedEvent.Icon, collectedEvent.Description);
+        Show(RewardType.Ability, acquiredEvent.Icon, acquiredEvent.Description);
     }
 
     private string GetTypeLabel(RewardType type)

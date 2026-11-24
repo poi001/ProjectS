@@ -1,61 +1,46 @@
 using UnityEngine;
 
-// 결석: 보스를 처치하면 보스 몸에서 튀어나오는 보상 물체. (GDD 6.6) 기본 동작·액티브 룬·패시브 룬 중 하나를 준다.
-// 움직임: 켜지는 순간 위로 솟아오르고 → 중력으로 떨어지고 → 바닥·벽에서 탱탱볼처럼 튕기다가 → 튀는 힘이 약해지면 멈춘다.
-//  - 물리 엔진의 충돌에 맡기지 않고 직접 계산한다. (Kinematic) 결석이 쓰는 Interactable 레이어는 바닥·벽과 충돌하지 않게 설정되어 있어,
-//    매 물리 프레임 이동 경로에 지형(Ground, Wall)이 있는지 원 모양으로 검사해 닿은 면에서 튕긴다. 벽·천장에서도 튕기므로 필드 밖으로 나가지 않는다.
+// 결석: 보스를 처치하면 보스 몸에서 뿜어져 나오는 보상 물체. (GDD 6.6) 종류는 리워드(기본 동작)·액티브 룬·패시브 룬 셋이다.
+// 프리팹은 종류만 정하고 모든 보스가 같이 쓴다. 보스가 어떤 결석을 떨구고 그 결석이 무엇을 주는지는 보스 데이터(EnemyStatsSO)에 있다.
+// 움직임: 정해 준 방향으로 뿜어져 나가고(Launch) → 중력으로 떨어지고 → 바닥·벽·천장에서 탱탱볼처럼 튕기다가 → 튀는 힘이 약해지면 멈춘다.
+//  - 방향은 소환하는 쪽(BattleResultManager)이 정한다. 결석이 여럿이면 서로 다른 방향을 준다. 따로 정해 주지 않으면 똑바로 위로 솟는다.
+//  - 튕김은 물리 엔진이 처리한다. (Dynamic) Interactable 레이어는 지형(Ground, Wall)과 충돌하므로 결석은 지형에 막혀 필드 밖으로 나가지 않는다. (GDD 6.2)
+//    튕기는 세기는 콜라이더의 물리 재질(Bounciness)이 정한다. 이 컴포넌트는 중력 세기, 낙하 속도 상한, 바닥에서 튕길 때 줄어드는 가로 속도, 멈추는 기준만 맡는다.
+//  - 결석끼리는 충돌하지 않는다. (Interactable끼리는 충돌하지 않음) 캐릭터의 몸(Character)과도 충돌하지 않아 플레이어가 밀거나 올라설 수 없다.
 // 줍기: 처음 바닥에 닿은 뒤부터, 플레이어의 피격 판정(Player 레이어 트리거)이 닿으면 RewardStoneCollectedEvent를 발행하고 사라진다.
+//  - 피격 판정이 트리거라서, 결석의 콜라이더가 트리거가 아니어도 겹치면 OnTrigger 알림이 온다. (밀거나 막지는 않는다)
 //  - 솟아오르는 동안에는 닿아도 줍지 않는다. (보스 바로 옆에서 잡아도 튀어 오르는 모습이 보이도록)
-//  - 실제 획득 처리(동작 해금, 룬 지급)는 아직 없다. 지금은 획득 창을 여는 이벤트만 발행한다.
-// 프리팹 구성: 루트(Interactable 레이어)에 이 컴포넌트, Rigidbody2D(Kinematic), CircleCollider2D(트리거). 그림은 자식 Visual이 맡는다.
+//  - 게임이 일시정지된 동안(다른 결석의 획득 창·룬 선택 창이 열려 있는 동안)에도 줍지 않는다. 결석 두 개에 한꺼번에 닿아도 하나씩 처리되고,
+//    남은 결석은 그 자리에 있다가 창이 닫힌 뒤 겹쳐 있으면 바로 이어서 주워진다. (창이 겹쳐 뜨거나 보상이 사라지지 않게)
+//  - 주웠을 때 무엇을 할지(동작 해금, 룬 선택 창, 액티브 룬 지급)는 이 이벤트를 받는 BattleResultManager가 종류에 따라 처리한다.
+// 프리팹 구성: 루트(Interactable 레이어)에 이 컴포넌트, Rigidbody2D(Dynamic), CircleCollider2D(트리거 아님, 물리 재질 RewardStone). 그림은 자식 Visual이 맡는다.
 [RequireComponent(typeof(Rigidbody2D), typeof(CircleCollider2D))]
 public class RewardStone : MonoBehaviour
 {
-    private const string GroundLayerName = "Ground";
-    private const string WallLayerName = "Wall";
     private const string PlayerHurtboxLayerName = "Player";
-    // 지형에 닿은 뒤 겹치지 않도록 면에서 띄우는 거리 (단위: 월드 거리)
-    private const float SkinWidth = 0.01f;
-    // 한 물리 프레임에서 처리하는 최대 튕김 횟수. (구석에서 바닥과 벽에 연달아 닿는 경우)
-    private const int MaxBouncesPerStep = 3;
     // 닿은 면의 법선 y가 이 값보다 크면 바닥으로 본다.
     private const float FloorNormalThreshold = 0.5f;
-    // 한 번의 검사에서 받는 지형 수
-    private const int HitBufferSize = 8;
 
     [Header("보상")]
-    [Tooltip("이 결석이 주는 보상의 종류입니다. 획득 창의 종류 팻말(기본 동작 / 액티브 룬 / 패시브 룬)이 이 값으로 정해집니다.")]
+    [Tooltip("이 결석의 종류입니다. 주웠을 때 일어나는 일이 이 값으로 갈립니다.\nAbility(리워드): 획득 창이 뜨고 동작이 해금됩니다. ActiveRune: 창 없이 바로 액티브 룬을 얻습니다. PassiveRune: 룬 선택 창이 뜹니다.\n무엇을 주는지는 보스 데이터(EnemyStatsSO)의 처치 보상에 적습니다.")]
     [SerializeField] private RewardType _rewardType;
-    [Tooltip("획득 창에 표시할 아이콘입니다. 비워 두면 회색 사각형으로 표시됩니다.")]
-    [SerializeField] private Sprite _icon;
-    [Tooltip("획득 창의 설명창에 표시할 글입니다. 한글 TMP 폰트가 생기기 전까지는 영문으로 적습니다.")]
-    [SerializeField, TextArea(2, 5)] private string _description;
 
-    [Header("솟아오르기")]
-    [Tooltip("나오는 순간 위로 솟아오르는 속도입니다. 클수록 높이 올라갑니다. (단위: 월드 거리/초)")]
+    [Header("뿜어져 나오기")]
+    [Tooltip("나오는 순간의 속도입니다. 방향은 소환하는 쪽(BattleResultManager)이 무작위로 정해 줍니다. 클수록 멀리, 높이 날아갑니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _launchSpeed = 14f;
-    [Tooltip("나오는 순간 좌우로 퍼지는 속도의 최댓값입니다. 0부터 이 값 사이에서 무작위로 정해지고 방향(왼쪽/오른쪽)도 무작위입니다. 0이면 똑바로 위로만 솟습니다. (단위: 월드 거리/초)")]
-    [SerializeField, Min(0f)] private float _launchHorizontalSpeed = 1.5f;
 
     [Header("낙하·튕김")]
-    [Tooltip("아래로 당기는 중력의 세기입니다. 클수록 빨리 떨어집니다. (단위: 월드 거리/초²)")]
+    [Tooltip("아래로 당기는 중력의 세기입니다. 클수록 빨리 떨어집니다. 시작할 때 Rigidbody2D의 Gravity Scale로 바꿔 넣으므로 Gravity Scale은 직접 고치지 않습니다. (단위: 월드 거리/초²)\n튕기는 세기는 콜라이더의 물리 재질(Assets/Data/Physics/RewardStone)의 Bounciness에서 정합니다.")]
     [SerializeField, Min(0f)] private float _gravity = 35f;
     [Tooltip("떨어지는 속도의 최댓값입니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _maxFallSpeed = 25f;
-    [Tooltip("지형에 닿았을 때 튕겨 나오는 세기입니다. 닿기 직전 속도에 이 비율을 곱한 속도로 튕깁니다. 0이면 튕기지 않고 1이면 같은 속도로 튕깁니다. (0~1)")]
-    [SerializeField, Range(0f, 1f)] private float _bounciness = 0.6f;
-    [Tooltip("바닥에서 튕길 때마다 남는 가로 속도의 비율입니다. 0이면 바닥에 닿는 순간 가로로 멈추고 1이면 줄지 않습니다. (0~1)")]
+    [Tooltip("바닥에서 튕길 때마다 남는 가로 속도의 비율입니다. 0이면 바닥에 닿는 순간 가로로 멈추고 1이면 줄지 않습니다. (0~1)\n물리 재질의 마찰은 0으로 두고 이 값으로만 가로 속도를 줄입니다.")]
     [SerializeField, Range(0f, 1f)] private float _floorHorizontalKeep = 0.7f;
     [Tooltip("바닥에서 튕겨 오르는 속도가 이 값보다 작아지면 튕기지 않고 그 자리에 멈춥니다. 클수록 일찍 멈춥니다. (단위: 월드 거리/초)")]
     [SerializeField, Min(0f)] private float _restSpeed = 2f;
 
-    private readonly RaycastHit2D[] _hits = new RaycastHit2D[HitBufferSize];
-
     private Rigidbody2D _rigidbody;
-    private CircleCollider2D _collider;
-    private ContactFilter2D _terrainFilter;
     private int _playerHurtboxLayer;
-    private Vector2 _velocity;
     // 처음 바닥에 닿았는지 여부. 닿은 뒤부터 주울 수 있다.
     private bool _hasLanded;
     // 튕김이 끝나 바닥에 멈췄는지 여부
@@ -70,29 +55,29 @@ public class RewardStone : MonoBehaviour
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
-        _collider = GetComponent<CircleCollider2D>();
-
-        // 움직임은 이 컴포넌트가 직접 계산한다. 멈춘 뒤에도 플레이어가 닿는 것을 놓치지 않도록 잠들지 않게 한다.
-        _rigidbody.bodyType = RigidbodyType2D.Kinematic;
-        _rigidbody.sleepMode = RigidbodySleepMode2D.NeverSleep;
-        _collider.isTrigger = true;
-
-        _terrainFilter = new ContactFilter2D();
-        _terrainFilter.SetLayerMask(LayerMask.GetMask(GroundLayerName, WallLayerName));
-        _terrainFilter.useTriggers = false;
         _playerHurtboxLayer = LayerMask.NameToLayer(PlayerHurtboxLayerName);
+
+        // 멈춘 뒤에도 플레이어가 닿는 것을 놓치지 않도록 잠들지 않게 한다. (잠든 물체는 겹침 알림을 받지 못한다)
+        _rigidbody.bodyType = RigidbodyType2D.Dynamic;
+        _rigidbody.sleepMode = RigidbodySleepMode2D.NeverSleep;
+        _rigidbody.freezeRotation = true;
+        _rigidbody.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+        float worldGravity = Mathf.Abs(Physics2D.gravity.y);
+        _rigidbody.gravityScale = worldGravity > Mathf.Epsilon ? _gravity / worldGravity : 0f;
     }
 
+    // 켜지면 일단 똑바로 위로 솟는다. 소환하는 쪽이 바로 이어서 Launch로 방향을 다시 정해 준다.
     private void OnEnable()
     {
-        Launch();
+        Launch(Vector2.up);
     }
 
-    // 지금 위치에서 위로 솟아오르기 시작한다. 켜질 때 자동으로 호출된다.
-    public void Launch()
+    // 지금 위치에서 정해 준 방향으로 뿜어져 나가기 시작한다. 방향의 크기는 쓰지 않는다. (속도는 Launch Speed)
+    public void Launch(Vector2 direction)
     {
-        float horizontalSpeed = Random.Range(-_launchHorizontalSpeed, _launchHorizontalSpeed);
-        _velocity = new Vector2(horizontalSpeed, _launchSpeed);
+        Vector2 launchDirection = direction.sqrMagnitude > Mathf.Epsilon ? direction.normalized : Vector2.up;
+        _rigidbody.linearVelocity = launchDirection * _launchSpeed;
         _hasLanded = false;
         _isResting = false;
         _isCollected = false;
@@ -105,36 +90,50 @@ public class RewardStone : MonoBehaviour
             return;
         }
 
-        float deltaTime = Time.fixedDeltaTime;
-        _velocity.y = Mathf.Max(_velocity.y - _gravity * deltaTime, -_maxFallSpeed);
+        Vector2 velocity = _rigidbody.linearVelocity;
 
-        Vector2 position = _rigidbody.position;
-        float radius = GetWorldRadius();
-        float remainingTime = deltaTime;
-
-        for (int i = 0; i < MaxBouncesPerStep && remainingTime > 0f && !_isResting; i++)
+        if (velocity.y < -_maxFallSpeed)
         {
-            Vector2 move = _velocity * remainingTime;
-            float distance = move.magnitude;
+            velocity.y = -_maxFallSpeed;
+            _rigidbody.linearVelocity = velocity;
+        }
+    }
 
-            if (distance <= Mathf.Epsilon)
-            {
-                break;
-            }
-
-            if (!TryFindNearestTerrain(position, radius, move / distance, distance, out RaycastHit2D hit))
-            {
-                position += move;
-                break;
-            }
-
-            // 닿은 자리까지만 가고, 남은 시간은 튕긴 방향으로 마저 움직인다.
-            position = hit.centroid + hit.normal * SkinWidth;
-            remainingTime *= 1f - Mathf.Clamp01(hit.distance / distance);
-            Bounce(hit.normal);
+    // 물리 엔진이 튕김을 처리한 뒤에 불린다. 바닥이면 가로 속도를 줄이고, 튕겨 오르는 힘이 약하면 멈춘다.
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (_isResting || _isCollected || !IsFloorContact(collision))
+        {
+            return;
         }
 
-        _rigidbody.MovePosition(position);
+        _hasLanded = true;
+        Vector2 velocity = _rigidbody.linearVelocity;
+
+        if (velocity.y < _restSpeed)
+        {
+            Rest();
+            return;
+        }
+
+        velocity.x *= _floorHorizontalKeep;
+        _rigidbody.linearVelocity = velocity;
+    }
+
+    // 바닥에 맞닿은 채로 미끄러지는 경우(튕겨 오르지 않고 바닥을 따라 움직이는 경우)에도 멈추게 한다.
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        if (_isResting || _isCollected || !IsFloorContact(collision))
+        {
+            return;
+        }
+
+        _hasLanded = true;
+
+        if (_rigidbody.linearVelocity.y < _restSpeed)
+        {
+            Rest();
+        }
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -148,91 +147,39 @@ public class RewardStone : MonoBehaviour
         TryCollect(other);
     }
 
-    // 이동 경로에서 가장 먼저 닿는 지형을 찾는다. 없으면 false를 반환한다.
-    private bool TryFindNearestTerrain(Vector2 origin, float radius, Vector2 direction, float distance, out RaycastHit2D nearestHit)
+    // 닿은 면 중 하나라도 바닥(위를 향한 면)이면 true
+    private static bool IsFloorContact(Collision2D collision)
     {
-        int hitCount = Physics2D.CircleCast(origin, radius, direction, _terrainFilter, _hits, distance);
-        nearestHit = default;
-        bool hasHit = false;
+        int contactCount = collision.contactCount;
 
-        for (int i = 0; i < hitCount; i++)
+        for (int i = 0; i < contactCount; i++)
         {
-            RaycastHit2D hit = _hits[i];
-
-            if (hit.distance <= 0f && !TryResolveTouchingTerrain(origin, direction, ref hit))
+            if (collision.GetContact(i).normal.y > FloorNormalThreshold)
             {
-                continue;
-            }
-
-            if (!hasHit || hit.distance < nearestHit.distance)
-            {
-                nearestHit = hit;
-                hasHit = true;
+                return true;
             }
         }
 
-        return hasHit;
+        return false;
     }
 
-    // 이미 지형과 맞닿았거나 겹친 채로 움직이기 시작한 경우(거리 0)를 처리한다. (몸이 낮은 보스의 몸 가운데에서 나와 바닥에 맞닿아 있을 때 등)
-    // 이때 검사가 알려 주는 법선은 믿을 수 없으므로, 두 콜라이더 사이의 실제 분리 방향으로 바꾼다.
-    // 지형에서 멀어지는 중이면 닿은 것으로 치지 않고(false), 지형 쪽으로 가는 중이면 겹친 만큼 밀어낸 자리에서 튕기게 한다.
-    private bool TryResolveTouchingTerrain(Vector2 origin, Vector2 direction, ref RaycastHit2D hit)
+    // 그 자리에 멈춘다. 중력이 바닥에 눌러 두므로 Dynamic 그대로 둔다. (발밑 지형이 움직이면 함께 떨어진다)
+    private void Rest()
     {
-        ColliderDistance2D separation = hit.collider.Distance(_collider);
-
-        if (!separation.isValid)
-        {
-            return true;
-        }
-
-        // 결석이 지형에서 벗어나는 방향. (떨어져 있으면 normal이 지형 쪽을, 겹쳐 있으면 벗어나는 쪽을 가리킨다)
-        Vector2 outward = separation.isOverlapped ? separation.normal : -separation.normal;
-
-        if (Vector2.Dot(direction, outward) >= 0f)
-        {
-            return false;
-        }
-
-        hit.normal = outward;
-        hit.centroid = separation.isOverlapped ? origin + (separation.pointA - separation.pointB) : origin;
-        return true;
-    }
-
-    // 닿은 면에서 튕긴다. 면을 향하던 속도는 튕김 비율만큼 줄여 반대로 뒤집고, 면을 따라가던 속도는 유지한다.
-    private void Bounce(Vector2 normal)
-    {
-        float normalSpeed = Vector2.Dot(_velocity, normal);
-
-        // 이미 면에서 멀어지는 중이면 튕기지 않는다.
-        if (normalSpeed >= 0f)
-        {
-            return;
-        }
-
-        Vector2 normalVelocity = normal * normalSpeed;
-        Vector2 tangentVelocity = _velocity - normalVelocity;
-
-        if (normal.y > FloorNormalThreshold)
-        {
-            _hasLanded = true;
-
-            if (-normalSpeed * _bounciness < _restSpeed)
-            {
-                _velocity = Vector2.zero;
-                _isResting = true;
-                return;
-            }
-
-            tangentVelocity *= _floorHorizontalKeep;
-        }
-
-        _velocity = tangentVelocity - normalVelocity * _bounciness;
+        _rigidbody.linearVelocity = Vector2.zero;
+        _isResting = true;
     }
 
     private void TryCollect(Collider2D other)
     {
         if (!CanBeCollected || other.gameObject.layer != _playerHurtboxLayer)
+        {
+            return;
+        }
+
+        // 다른 결석의 창이 열려 있는 동안(일시정지 중)에는 줍지 않고 그대로 둔다. 창이 닫힌 뒤 겹쳐 있으면 OnTriggerStay2D로 이어서 주워진다.
+        // 같은 물리 프레임에 결석 두 개가 함께 닿아도, 먼저 처리된 결석이 창을 열어 일시정지하므로 나머지는 여기서 기다린다.
+        if (GameManager.HasInstance && GameManager.Instance.IsPaused)
         {
             return;
         }
@@ -243,16 +190,7 @@ public class RewardStone : MonoBehaviour
         }
 
         _isCollected = true;
-
-        // 실제 획득 처리(동작 해금, 룬 지급)는 아직 없다. 지금은 획득 창을 여는 이벤트만 발행한다.
-        EventBus<RewardStoneCollectedEvent>.Publish(new RewardStoneCollectedEvent(_rewardType, _icon, _description));
+        EventBus<RewardStoneCollectedEvent>.Publish(new RewardStoneCollectedEvent(_rewardType));
         Destroy(gameObject);
-    }
-
-    // 판정 원의 월드 반지름. 프리팹의 스케일을 반영한다.
-    private float GetWorldRadius()
-    {
-        Vector3 scale = transform.lossyScale;
-        return _collider.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
     }
 }

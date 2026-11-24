@@ -99,7 +99,7 @@ public class RuneSelectWindow : UIWindow
     }
 
     // 룬을 패널에 채우고 창을 연다. 이미 열려 있으면 무시한다.
-    public void Show(IReadOnlyList<RuneDataSO> runes)
+    public void Show(IReadOnlyList<PassiveRuneDataSO> runes)
     {
         if (IsOpen || !HasAnyRune(runes))
         {
@@ -211,7 +211,7 @@ public class RuneSelectWindow : UIWindow
         }
     }
 
-    private void OnPanelPicked(RuneDataSO rune)
+    private void OnPanelPicked(PassiveRuneDataSO rune)
     {
         if (!IsOpen)
         {
@@ -223,7 +223,7 @@ public class RuneSelectWindow : UIWindow
         EventBus<RunePickedEvent>.Publish(new RunePickedEvent(rune));
     }
 
-    private bool HasAnyRune(IReadOnlyList<RuneDataSO> runes)
+    private bool HasAnyRune(IReadOnlyList<PassiveRuneDataSO> runes)
     {
         if (runes == null)
         {

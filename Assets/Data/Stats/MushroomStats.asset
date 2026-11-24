@@ -15,3 +15,16 @@ MonoBehaviour:
   _attackPower: 10
   _attackSpeed: 1
   _maxHealth: 100
+  _rewardStones:
+  - {fileID: 599704262505241764, guid: c30110514d78255449a4831b732a0cb0, type: 3}
+  - {fileID: 2583380337987636511, guid: 23b3c96c10f800b44b95f70682421310, type: 3}
+  _rewardAbility: 8
+  _rewardAbilityIcon: {fileID: 0}
+  _rewardAbilityDescription: 'Air Jump unlocked.
+
+    Press Jump again in the air.
+
+    (Temporary
+    text)'
+  _rewardActiveRune: {fileID: 0}
+  _rewardRunes: []

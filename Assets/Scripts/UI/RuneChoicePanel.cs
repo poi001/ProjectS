@@ -61,7 +61,7 @@ public class RuneChoicePanel : MonoBehaviour, IPointerEnterHandler, IPointerExit
     [Tooltip("뗐을 때 원래 크기로 돌아오는 데 걸리는 시간입니다. 패널 위에서 뗐다면 이 연출이 끝난 뒤 룬 선택이 확정됩니다. (단위: 초, 실제 시간)")]
     [SerializeField, Min(0f)] private float _releaseDuration = 0.1f;
 
-    private RuneDataSO _rune;
+    private PassiveRuneDataSO _rune;
     private Tween _tiltTween;
     private Tween _scaleTween;
     // 기울임 보간 콜백. 연출을 재생할 때마다 새로 만들지 않도록 한 번만 만들어 둔다.
@@ -79,7 +79,7 @@ public class RuneChoicePanel : MonoBehaviour, IPointerEnterHandler, IPointerExit
     public event Action<RuneChoicePanel> PickStarted;
 
     // 확정 연출이 끝나 룬 선택이 확정됐을 때 알린다. 인자는 이 패널에 채운 룬이다.
-    public event Action<RuneDataSO> Picked;
+    public event Action<PassiveRuneDataSO> Picked;
 
     public Button Button => _button;
 
@@ -103,7 +103,7 @@ public class RuneChoicePanel : MonoBehaviour, IPointerEnterHandler, IPointerExit
     }
 
     // 룬 정보로 패널을 채운다. 진행 중이던 연출은 멈추고 원래 모습으로 되돌린다.
-    public void Setup(RuneDataSO rune)
+    public void Setup(PassiveRuneDataSO rune)
     {
         _rune = rune;
         ResetEffects();

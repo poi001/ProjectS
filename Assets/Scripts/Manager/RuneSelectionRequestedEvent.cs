@@ -5,10 +5,10 @@ using System.Collections.Generic;
 // 발행마다 생성되므로 GC 할당이 없도록 struct로 정의한다.
 public struct RuneSelectionRequestedEvent
 {
-    // 선택지로 보여 줄 룬 (보통 3개)
-    public IReadOnlyList<RuneDataSO> Runes;
+    // 선택지로 보여 줄 패시브 룬 (보통 3개)
+    public IReadOnlyList<PassiveRuneDataSO> Runes;
 
-    public RuneSelectionRequestedEvent(IReadOnlyList<RuneDataSO> runes)
+    public RuneSelectionRequestedEvent(IReadOnlyList<PassiveRuneDataSO> runes)
     {
         Runes = runes;
     }

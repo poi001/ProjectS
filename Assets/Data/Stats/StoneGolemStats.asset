@@ -15,3 +15,10 @@ MonoBehaviour:
   _attackPower: 10
   _attackSpeed: 1
   _maxHealth: 100
+  _rewardStones:
+  - {fileID: 2583380337987636511, guid: 23b3c96c10f800b44b95f70682421310, type: 3}
+  _rewardAbility: 0
+  _rewardAbilityIcon: {fileID: 0}
+  _rewardAbilityDescription: 
+  _rewardActiveRune: {fileID: 0}
+  _rewardRunes: []
