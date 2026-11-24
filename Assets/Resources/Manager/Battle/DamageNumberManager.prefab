@@ -45,5 +45,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _enemyHitPrefab: {fileID: 2185500421180304576, guid: 8ac87eb6d1583c948a4fd2b45f1226cf, type: 3}
+  _enemyCritPrefab: {fileID: 2185500421180304576, guid: 8168043feb8c76d4a86f643043cf4a91, type: 3}
   _playerHitPrefab: {fileID: 440016653359726494, guid: 0856f34d12057114a948406c3d79e8ca, type: 3}
   _healPrefab: {fileID: 2185500421180304576, guid: a2f8c527d7450cd4d9d40866fb030af5, type: 3}

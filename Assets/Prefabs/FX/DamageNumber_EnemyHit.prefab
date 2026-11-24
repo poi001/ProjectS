@@ -486,7 +486,7 @@ SortingGroup:
   m_GameObject: {fileID: 6245962706707087160}
   m_Enabled: 1
   m_SortingLayerID: 1701885051
-  m_SortingLayer: 3
+  m_SortingLayer: 7
   m_SortingOrder: 1000
   m_SortAtRoot: 0
 --- !u!1 &7243500843184468328
@@ -773,7 +773,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4287168419
-  m_fontColor: {r: 1, g: 0.15, b: 0.15, a: 1}
+  m_fontColor: {r: 1, g: 0.55, b: 0.1, a: 1}
   m_enableVertexGradient: 1
   m_colorMode: 2
   m_fontColorGradient:

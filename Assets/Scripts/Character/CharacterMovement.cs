@@ -141,7 +141,7 @@ public class CharacterMovement : MonoBehaviour
     }
 
     // 해당 방향(오른쪽 양수, 왼쪽 음수)으로 붙어 있는 벽의 콜라이더를 반환한다. 붙어 있지 않으면 null. (IsTouchingWall과 같은 기준)
-    // 어느 벽인지 구분해야 할 때 쓴다. (플레이어가 방금 벽 점프한 벽인지 확인하는 용도)
+    // 어느 벽인지 구분해야 할 때 쓴다.
     public Collider2D GetTouchingWall(float direction)
     {
         Bounds bounds = _bodyCollider.bounds;

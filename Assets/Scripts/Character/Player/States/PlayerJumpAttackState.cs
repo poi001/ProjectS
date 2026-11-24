@@ -3,8 +3,8 @@ using System;
 // 공중 공격 상태. 공중 콤보 1 → 2 → ... (JumpAttack{n}) 순으로 이어지며, 이어가지 않으면 그 타로 끝내고 Fall로 돌아간다.
 // 공격하는 동안에도 중력을 받아 떨어지고, 공중에서는 좌우로 움직일 수 있다. 땅에 닿으면 멈춘다. 방향은 공격 중 바뀌지 않는다.
 // 횟수 제한은 없다. 공격이 끝나기 직전(버퍼 시간 이내)에 누른 공격이 다음 타로 이어지지 못했다면(마지막 타였다면) 1타부터 다시 공격한다.
-// 이어가지 않으면 그 타의 복귀 동작(JumpAttack{n}_End)을 재생한다. 재생 중에 입력이 들어오면 바로 넘어간다.
-// 공중이면 대시·공중 점프·공중 공격·벽타기, 땅이면 점프·대시·공격·스킬·블로킹·이동. 입력이 없으면 끝까지 재생한 뒤 끝낸다.
+// 이어가지 않으면 그 타의 복귀 동작(JumpAttack{n}_End)을 재생한다. 재생 중에 입력이 들어오면 바로 넘어간다. (때리는 동작 JumpAttack{n} 자체는 끊기지 않는다)
+// 공중이면 대시·공중 점프·공중 공격·벽타기, 땅이면 점프·대시·공격·스킬·블로킹·체력 회복·이동. 입력이 없으면 끝까지 재생한 뒤 끝낸다.
 // 콤보 수는 Player.AirComboCount를 따른다. (지금 2타)
 // 데미지 판정은 클립의 애니메이션 이벤트(타격 프레임)마다 현재 공중 콤보의 판정과 계수로 한 번씩 한다.
 public class PlayerJumpAttackState : PlayerState
@@ -127,7 +127,7 @@ public class PlayerJumpAttackState : PlayerState
             return;
         }
 
-        owner.HitChecker.ResetHitTargets();
-        owner.HitChecker.Hit(attack.Hitbox, owner.GetDamage(attack), owner.Animation.FacingDirection);
+        // 치명타와 피해 흡수는 Player가 타격마다 처리한다.
+        owner.PerformAttackHit(attack);
     }
 }

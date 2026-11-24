@@ -12,12 +12,15 @@ public struct DamageTakenEvent
     public float Amount;
     // 피격 월드 좌표
     public Vector2 HitPoint;
+    // 치명타였는지 여부 (데미지 숫자를 치명타용으로 띄우는 데 쓴다)
+    public bool IsCritical;
 
-    public DamageTakenEvent(GameObject target, GameObject instigator, float amount, Vector2 hitPoint)
+    public DamageTakenEvent(GameObject target, GameObject instigator, float amount, Vector2 hitPoint, bool isCritical = false)
     {
         Target = target;
         Instigator = instigator;
         Amount = amount;
         HitPoint = hitPoint;
+        IsCritical = isCritical;
     }
 }

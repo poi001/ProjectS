@@ -280,7 +280,6 @@ GameObject:
   - component: {fileID: 7320826866584043485}
   - component: {fileID: 6454540363204507420}
   - component: {fileID: 7127926285822344934}
-  - component: {fileID: -4841766643964801164}
   - component: {fileID: 5430642878169766860}
   - component: {fileID: 9105014987773638855}
   - component: {fileID: 7552119686008831397}
@@ -372,7 +371,7 @@ BoxCollider2D:
     serializedVersion: 2
     m_Bits: 4294967295
   m_IsTrigger: 0
-  m_UsedByEffector: 1
+  m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
@@ -387,25 +386,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.6, y: 1.125}
   m_EdgeRadius: 0
---- !u!251 &-4841766643964801164
-PlatformEffector2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1329958631584838865}
-  m_Enabled: 1
-  m_UseColliderMask: 1
-  m_ColliderMask:
-    serializedVersion: 2
-    m_Bits: 1536
-  m_RotationalOffset: 180
-  m_UseOneWay: 1
-  m_UseOneWayGrouping: 0
-  m_SurfaceArc: 180
-  m_UseSideFriction: 0
-  m_UseSideBounce: 0
-  m_SideArc: 1
 --- !u!114 &5430642878169766860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -423,6 +403,7 @@ MonoBehaviour:
   _dashBufferTime: 0.25
   _blockBufferTime: 0.15
   _skillBufferTime: 0.15
+  _healBufferTime: 0.15
 --- !u!114 &9105014987773638855
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -476,17 +457,23 @@ MonoBehaviour:
   _wallJumpWallBlockTime: 0.5
   _dashSpeed: 15
   _dashDuration: 0.25
-  _dashCooldown: 1
+  _dashCooldown: 0.5
+  _staminaRegenDelay: 1
+  _wallSlideStartStaminaCost: 10
+  _wallSlideStaminaCostPerSecond: 30
+  _dashStaminaCost: 30
+  _airJumpStaminaCost: 30
+  _blockStaminaCost: 30
   _comboAttacks:
   - _damageMultiplier: 1
     _hitbox:
       _offset: {x: 1, y: 0}
       _size: {x: 1.5, y: 1}
-  - _damageMultiplier: 1
+  - _damageMultiplier: 3
     _hitbox:
       _offset: {x: 1, y: 0}
       _size: {x: 1.5, y: 1}
-  - _damageMultiplier: 0.5
+  - _damageMultiplier: 3
     _hitbox:
       _offset: {x: 1, y: 0}
       _size: {x: 1.5, y: 1}
@@ -505,7 +492,7 @@ MonoBehaviour:
   _blockCooldown: 10
   _blockFeedbacks: {fileID: 8381008824693838244}
   _blockSuccessSound: {fileID: 0}
-  _skillCooldown: 0
+  _healAmount: 30
 --- !u!114 &2126636803840129045
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2195,7 +2182,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1701885051
-  m_SortingLayer: 5
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_Sprite: {fileID: 1099714834100166994, guid: 26b78d8a19d96a04e867cb764dd9d7de, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}

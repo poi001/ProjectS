@@ -4,6 +4,7 @@ using System;
 // 재생되는 동안 들어온 공격을 한 번 막는다. (피해 없음) 한 번 막은 뒤에는 남은 동작 동안 다시 막지 못한다.
 // 막는 데 성공하면 짧은 슬로우 모션과 소리를 재생한다. (Player.PlayBlockSuccessEffects)
 // 동작이 끝날 때까지 이동·점프·공격·대시 입력을 받지 않고 멈춰 있으며, 방향도 바뀌지 않는다.
+// 시작할 때 기력을 소모한다. (막았는지와 관계없음, Player.ConsumeBlockStamina)
 // 끝나면 쿨타임이 시작되고(막았는지와 관계없음) Idle/Run(입력이 있으면 그 동작)으로 돌아간다.
 // 막는 방법: 재생 중 CharacterVital의 피해 무효를 켜 두고, 무효 처리된 첫 공격에서 끈다.
 // (피해 무효는 맞은 것으로 처리되어 히트 이펙트와 0 데미지 숫자가 뜬다)
@@ -21,6 +22,7 @@ public class PlayerBlockState : PlayerState
     public override void Enter()
     {
         owner.InputHandler.ConsumeBlockBuffer();
+        owner.ConsumeBlockStamina();
         owner.Vital.DamageNullified += _damageNullifiedHandler;
         owner.Vital.SetDamageNullified(true);
         owner.Movement.Move(0f);

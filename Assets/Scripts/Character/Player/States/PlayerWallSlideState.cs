@@ -3,7 +3,8 @@ using UnityEngine;
 // 벽타기 상태. 공중에서 벽 쪽 이동 키를 누르고 있는 동안 벽에 붙어 일정한 속도로 미끄러져 내려간다. (중력 없음)
 // 원본 스프라이트는 왼쪽 벽에 붙은 모습이므로 벽 반대쪽을 바라보게 해서 오른쪽 벽이면 좌우를 뒤집는다.
 // 시작할 때 공중 대시를 다시 채운다. (공중 점프는 땅에 닿아야만 채워진다)
-// 점프 → 벽 점프(벽 점프를 얻었을 때), 대시 → 벽 반대쪽으로 대시(대시를 얻었을 때), 벽 쪽 키를 떼거나 벽이 끝나면 → Fall, 땅에 닿으면 → Idle/Run.
+// 기력: 시작할 때 시작 비용을 한 번 소모하고, 매달려 있는 동안 시간에 따라 연속해서 소모한다. 기력이 바닥나면 벽에서 떨어진다. (Player의 기력 항목, GDD 4.5)
+// 점프 → 벽 점프(벽 점프를 얻었을 때), 대시 → 벽 반대쪽으로 대시(대시를 얻었을 때), 벽 쪽 키를 떼거나 벽이 끝나거나 기력이 바닥나면 → Fall, 땅에 닿으면 → Idle/Run.
 // 벽에 붙어 있는 동안 공격 입력은 받지 않는다. (벽에서 떨어진 뒤 버퍼 시간 안이면 점프 공격으로 이어진다)
 public class PlayerWallSlideState : PlayerState
 {
@@ -23,6 +24,7 @@ public class PlayerWallSlideState : PlayerState
 
     public override void Enter()
     {
+        owner.ConsumeWallSlideStartStamina();
         owner.RefillAirDash();
         // 벽과 조금 떨어진 채로 붙었을 수 있으므로 몸을 벽에 맞닿게 옮긴다.
         owner.Movement.SnapToWall(_wallDirection);
@@ -53,8 +55,6 @@ public class PlayerWallSlideState : PlayerState
         // 벽 점프를 얻지 못했으면(Knight 처치) 점프 입력이 있어도 벽에 붙은 채로 둔다.
         if (owner.InputHandler.HasBufferedJump && owner.HasAbility(PlayerAbility.WallJump))
         {
-            // 지금 붙어 있는 벽을 기록해 두어, 벽 점프 후 같은 벽에 다시 붙지 못하게 한다.
-            owner.SetLastWallJumpedWall(owner.Movement.GetTouchingWall(_wallDirection));
             owner.WallJumpState.SetDirection(-_wallDirection);
             stateMachine.ChangeState(owner.WallJumpState);
             return;
@@ -66,6 +66,13 @@ public class PlayerWallSlideState : PlayerState
         }
 
         if (!IsHoldingTowardWall() || !owner.Movement.IsTouchingWall(_wallDirection))
+        {
+            stateMachine.ChangeState(owner.FallState);
+            return;
+        }
+
+        // 매달려 있는 시간만큼 기력이 닳는다. 바닥나면 벽에서 떨어진다.
+        if (!owner.DrainWallSlideStamina(Time.deltaTime))
         {
             stateMachine.ChangeState(owner.FallState);
         }

@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 57684700a77c23246b73345008aaf938, type: 3}
+  m_Script: {fileID: 11500000, guid: af681fc425360a54ca49caa550a1d2e4, type: 3}
   m_Name: TempRune_Attack
   m_EditorClassIdentifier: 
   _runeName: TEMP ATTACK RUNE
@@ -18,3 +18,4 @@ MonoBehaviour:
 
     Attack power +10%. (No effect yet)'
   _category: 0
+  _modifiers: []

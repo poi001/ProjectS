@@ -126,6 +126,26 @@ public class CharacterVital : MonoBehaviour, IDamageable
         HealthChanged?.Invoke();
     }
 
+    // 최대 체력을 바꾼다. 스탯 보정(룬·장비 등)으로 최대 체력이 달라졌을 때 그 캐릭터가 호출한다.
+    // 현재 체력은 최대 체력에 대한 비율을 유지한다. (가득 차 있었으면 그대로 가득, 절반이었으면 새 최대 체력의 절반)
+    // 체력이 바뀌어도 피해·회복이 아니므로 데미지·회복 숫자는 띄우지 않는다.
+    // 최대 체력이 줄어도 피해의 하한(최소 체력, 상대가 죽은 뒤의 1) 아래로는 내려가지 않는다. (이미 하한보다 낮았다면 그 체력을 유지한다, GDD 6.4)
+    public void SetMaxHealth(float maxHealth)
+    {
+        if (Mathf.Approximately(maxHealth, MaxHealth))
+        {
+            return;
+        }
+
+        float scale = MaxHealth > 0f ? maxHealth / MaxHealth : 1f;
+        float protectedHealth = Mathf.Min(CurrentHealth, HealthFloor);
+        MaxHealth = maxHealth;
+        CurrentHealth = Mathf.Min(maxHealth, Mathf.Max(CurrentHealth * scale, protectedHealth));
+        // 사망 확정을 미루는 중이라면, 살아남을 때 되돌릴 체력도 새 최대 체력에 맞춘다.
+        _healthBeforeLethalDamage = Mathf.Min(maxHealth, _healthBeforeLethalDamage * scale);
+        HealthChanged?.Invoke();
+    }
+
     // 피해로 내려갈 수 있는 최소 체력을 정한다. 0이면 제한 없이 피해로 죽을 수 있다.
     // 최소 체력에 걸려 깎이지 않은 피해도 맞은 것으로 처리된다. (피해량은 실제로 깎인 양인 0으로 알린다)
     public void SetMinimumHealth(float minimumHealth)
@@ -166,7 +186,7 @@ public class CharacterVital : MonoBehaviour, IDamageable
         Damaged?.Invoke(damageInfo);
 
         // 연출 시스템(데미지 숫자 등)용. 체력보다 큰 피해는 실제로 깎인 양만 알린다.
-        EventBus<DamageTakenEvent>.Publish(new DamageTakenEvent(gameObject, damageInfo.Instigator, previousHealth - CurrentHealth, damageInfo.HitPoint));
+        EventBus<DamageTakenEvent>.Publish(new DamageTakenEvent(gameObject, damageInfo.Instigator, previousHealth - CurrentHealth, damageInfo.HitPoint, damageInfo.IsCritical));
 
         // 위의 Damaged 구독자는 체력을 모두 잃은 이 피격을 치명 피해(IsDead)로 본다. 소진 상태는 그 뒤에 시작한다.
         if (IsDead)

@@ -44,15 +44,16 @@ public class AttackHitChecker
 
     // 이번 공격에서 아직 맞지 않은 대상에게만 피해를 준다. 피해를 준 대상 수를 반환한다.
     // facingDirection: 캐릭터가 보는 방향 (오른쪽 1, 왼쪽 -1)
-    public int Hit(HitboxShape hitbox, float damage, float facingDirection)
+    // isCritical: 치명타인지 여부. damage에는 치명타 배율이 이미 곱해져 있어야 하며, 이 값은 연출(데미지 숫자) 구분용으로만 전달된다.
+    public int Hit(HitboxShape hitbox, float damage, float facingDirection, bool isCritical = false)
     {
         Vector2 center = hitbox.GetCenter(_ownerTransform.position, facingDirection);
-        return Hit(center, hitbox.Size, 0f, damage);
+        return Hit(center, hitbox.Size, 0f, damage, isCritical);
     }
 
     // 월드 좌표의 중심·크기와 회전 각도로 정한 박스 범위에 판정을 낸다. 비스듬히 뻗는 범위(화염 등)에 쓴다.
     // angle: 박스의 회전 각도 (단위: 도, 반시계 방향). 크기의 x가 회전한 박스의 긴 쪽 방향이다.
-    public int Hit(Vector2 center, Vector2 size, float angle, float damage)
+    public int Hit(Vector2 center, Vector2 size, float angle, float damage, bool isCritical = false)
     {
         LastHitCenter = center;
         LastHitSize = size;
@@ -72,7 +73,7 @@ public class AttackHitChecker
                 continue;
             }
 
-            DamageInfo damageInfo = new DamageInfo(damage, _owner, hurtbox.ClosestPoint(center));
+            DamageInfo damageInfo = new DamageInfo(damage, _owner, hurtbox.ClosestPoint(center), isCritical);
 
             if (target.TakeDamage(damageInfo))
             {

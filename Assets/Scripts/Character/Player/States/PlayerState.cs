@@ -60,7 +60,7 @@ public abstract class PlayerState : State<Player>
         return TryChangeToSkillState() || TryChangeToBlockState() || TryChangeToHealState();
     }
 
-    // 땅 위에서 동작의 끝부분(공격 복귀 동작 등)을 입력으로 끊을 때 쓴다. 점프 > 대시 > 공격 > 스킬 > 블로킹 > 체력 회복 > 이동(Run) 순으로 확인한다.
+    // 땅 위에서 공격 복귀 동작(Combo{n}_End, JumpAttack{n}_End)을 입력으로 끊을 때 쓴다. 점프 > 대시 > 공격 > 스킬 > 블로킹 > 체력 회복 > 이동(Run) 순으로 확인한다.
     // 입력이 없으면 전환하지 않고 false를 반환한다. (발밑이 사라져도 낙하로 넘어가지 않는다. 동작이 끝난 뒤에 처리한다)
     protected bool TryInterruptOnGround()
     {
@@ -158,7 +158,7 @@ public abstract class PlayerState : State<Player>
 
     // 공중에서 벽 쪽으로 이동 키를 누르고 있고 그쪽 벽에 닿아 있으면 벽타기로 전환한다. 전환했다면 true를 반환한다.
     // 올라가는 중에는 붙지 않는다. (벽 옆에서 뛰어오르는 점프가 끊기지 않게 하고, 벽 점프 직후 같은 벽에 다시 붙지 않게 한다)
-    // 마지막으로 벽 점프한 벽에는 붙지 않는다. (같은 벽에서 벽 점프를 반복해 계속 오르지 못하게 한다)
+    // 벽타기를 시작할 기력(시작 비용)이 모자라면 붙지 않는다. (같은 벽에 다시 붙는 것은 막지 않는다. 기력이 벽타기 반복을 제한한다)
     // 벽타기를 얻지 못했으면(Knight 처치) 벽에 닿아도 붙지 않는다.
     protected bool TryChangeToWallSlideState()
     {
@@ -173,9 +173,8 @@ public abstract class PlayerState : State<Player>
         }
 
         float direction = Mathf.Sign(GetMoveInput());
-        Collider2D wall = owner.Movement.GetTouchingWall(direction);
 
-        if (wall == null || owner.IsLastWallJumpedWall(wall))
+        if (!owner.Movement.IsTouchingWall(direction) || !owner.HasWallSlideStartStamina)
         {
             return false;
         }
