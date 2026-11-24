@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57684700a77c23246b73345008aaf938, type: 3}
+  m_Name: TempRune_Attack
+  m_EditorClassIdentifier: 
+  _runeName: TEMP ATTACK RUNE
+  _icon: {fileID: 0}
+  _description: 'Temporary rune for testing.
+
+    Attack power +10%. (No effect yet)'
+  _category: 0

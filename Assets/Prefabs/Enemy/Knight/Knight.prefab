@@ -339,7 +339,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1381404352
-  m_SortingLayer: 1
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: 3204480812468917802, guid: 634d7555582862e438fd2cddbc6a6062, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -892,6 +892,7 @@ MonoBehaviour:
   _startIdleDuration: 1
   _nextPhaseMaxHealths: []
   _phaseRefillDuration: 1.5
+  _deathRewardStonePrefab: {fileID: 599704262505241764, guid: c30110514d78255449a4831b732a0cb0, type: 3}
   _attackRange: 3
   _comboChance: 0.5
   _wallClimbChance: 0.5

@@ -27,6 +27,10 @@ public abstract class Enemy : Character
     [Tooltip("페이즈 전환 때 체력이 0에서 최대까지 차오르는 데 걸리는 시간입니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _phaseRefillDuration = 1.5f;
 
+    [Header("처치 보상")]
+    [Tooltip("죽으면 몸에서 튀어나오는 결석 프리팹입니다. 주는 것(기본 동작 / 액티브 룬 / 패시브 룬)에 맞는 프리팹(RewardStone_Ability, RewardStone_ActiveRune, RewardStone_PassiveRune)을 넣습니다.\n사망 애니메이션이 끝났을 때 몸 가운데에서 나와 위로 솟아오릅니다. 비워 두면 아무것도 나오지 않습니다. (GDD 6.6)")]
+    [SerializeField] private RewardStone _deathRewardStonePrefab;
+
     protected StateMachine<Enemy> stateMachine;
     // 부모의 Animation 자동 프로퍼티와 직렬화 필드 이름이 겹치지 않도록 별도 필드에 보관한다.
     private EnemyAnimation _enemyAnimation;
@@ -306,6 +310,20 @@ public abstract class Enemy : Character
     private void OnDied()
     {
         stateMachine.ChangeState(DeadState);
+    }
+
+    // 사망 애니메이션이 끝나면 처치 보상 결석을 몸 가운데에서 소환한다. 결석은 켜지는 순간 스스로 솟아오른다. (RewardStone)
+    // 씬에 그대로 두므로 씬이 바뀌면 함께 사라진다.
+    protected override void OnDeathFinished()
+    {
+        if (_deathRewardStonePrefab == null)
+        {
+            return;
+        }
+
+        // 몸 콜라이더가 꺼져 있으면 bounds가 비어 있으므로 루트 위치를 쓴다.
+        Vector3 spawnPosition = BodyCollider != null && BodyCollider.enabled ? BodyCollider.bounds.center : transform.position;
+        Instantiate(_deathRewardStonePrefab, spawnPosition, Quaternion.identity);
     }
 
     // 다음 페이즈가 남은 채로 체력을 모두 잃었을 때. 죽는 대신 페이즈 전환을 시작한다.

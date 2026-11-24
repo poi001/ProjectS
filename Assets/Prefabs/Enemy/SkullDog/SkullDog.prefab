@@ -1677,6 +1677,7 @@ MonoBehaviour:
   _startIdleDuration: 1
   _nextPhaseMaxHealths: []
   _phaseRefillDuration: 1.5
+  _deathRewardStonePrefab: {fileID: 599704262505241764, guid: c30110514d78255449a4831b732a0cb0, type: 3}
   _patternInterval: 1
   _dashChance: 0.5
   _bodyHitbox:
