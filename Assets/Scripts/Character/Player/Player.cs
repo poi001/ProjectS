@@ -78,6 +78,10 @@ public class Player : Character
     [Tooltip("스킬(스페이스바)이 끝난 뒤 다시 쓸 수 있을 때까지의 시간입니다. 0이면 끝나자마자 다시 쓸 수 있습니다. (단위: 초)")]
     [SerializeField, Min(0f)] private float _skillCooldown = 0f;
 
+    [Header("체력 회복")]
+    [Tooltip("체력 회복 동작(위 방향키를 1초 동안 누르고 있기)이 끝났을 때 한 번 회복하는 체력의 양입니다. 임시 값이며, 나중에는 장착한 물약·음식의 회복량으로 바뀝니다. 최대 체력을 넘게 회복되지는 않습니다.")]
+    [SerializeField, Min(0f)] private float _healAmount = 30f;
+
     private StateMachine<Player> _stateMachine;
     // 부모의 Animation 자동 프로퍼티와 직렬화 필드 이름이 겹치지 않도록 별도 필드에 보관한다.
     private PlayerAnimation _playerAnimation;
@@ -102,6 +106,9 @@ public class Player : Character
     private bool _isCinematicAttackAllowed;
     // 시네마틱이 공격을 허용한 동안 콤보(2타·3타)로 이어갈 수 있는지 여부. 공격을 허용할 때 연 쪽이 함께 정한다. (SetCinematicAttackAllowed)
     private bool _isCinematicComboAllowed = true;
+    // 시네마틱이 공격을 허용한 동안 한 번 공격을 시작한 뒤 다음 공격을 시작할 수 있기까지의 간격(초)과, 다음 공격을 시작할 수 있는 시각. 0이면 간격이 없다. (SetCinematicAttackAllowed)
+    private float _cinematicAttackInterval;
+    private float _nextCinematicAttackTime = float.NegativeInfinity;
     // 시네마틱 중 다른 쪽이 플레이어를 가로로 옮기는 중인지와 그 구간 (StartCinematicSlide)
     private bool _isCinematicSliding;
     private float _cinematicSlideStartX;
@@ -135,6 +142,7 @@ public class Player : Character
     public PlayerHitState HitState { get; private set; }
     public PlayerBlockState BlockState { get; private set; }
     public PlayerSkillState SkillState { get; private set; }
+    public PlayerHealState HealState { get; private set; }
     public PlayerDeadState DeadState { get; private set; }
 
     // Animator에서 실제로 사용할 수 있는 지상 콤보 수
@@ -146,18 +154,21 @@ public class Player : Character
 
     // 지금 콤보를 다음 타로 이어갈 수 없는지 여부. 시네마틱이 공격만 허용하면서 콤보는 막은 동안 true다. (PlayerAttackState, PlayerJumpAttackState가 확인한다)
     public bool IsComboBlocked => _isCinematicPlaying && _isCinematicAttackAllowed && !_isCinematicComboAllowed;
-
     protected override string HurtboxLayerName => "Player";
     protected override string TargetLayerName => "Enemy";
 
     // 점프 버퍼 시간 안에 입력이 있었고, 코요테 타임 안에 접지했었다면 점프 가능
     public bool CanJump => InputHandler.HasBufferedJump && Movement.TimeSinceGrounded <= _coyoteTime;
 
-    // 공중에서 점프 입력이 있고 공중 점프 횟수가 남아 있다면 공중 점프 가능 (코요테 타임 안이라면 CanJump가 먼저 쓰인다)
-    public bool CanAirJump => InputHandler.HasBufferedJump && !Movement.IsGrounded && _remainingAirJumps > 0;
+    // 공중 점프를 얻었고(Mushroom 처치), 공중에서 점프 입력이 있고 공중 점프 횟수가 남아 있다면 공중 점프 가능 (코요테 타임 안이라면 CanJump가 먼저 쓰인다)
+    public bool CanAirJump => HasAbility(PlayerAbility.AirJump)
+        && InputHandler.HasBufferedJump
+        && !Movement.IsGrounded
+        && _remainingAirJumps > 0;
 
-    // 대시 중에는 재진입하지 않으며, 쿨타임이 끝난 뒤 새로 누른 입력과 남은 대시 자원이 있어야 한다.
-    public bool CanDash => CurrentState != DashState
+    // 대시를 얻어야 하며(SkullDog 처치), 대시 중에는 재진입하지 않고, 쿨타임이 끝난 뒤 새로 누른 입력과 남은 대시 자원이 있어야 한다.
+    public bool CanDash => HasAbility(PlayerAbility.Dash)
+        && CurrentState != DashState
         && Time.time >= _dashReadyTime
         && InputHandler.IsDashBuffered(_dashReadyTime)
         && (Movement.IsGrounded || _hasAirDash);
@@ -165,9 +176,10 @@ public class Player : Character
     // 공중에 있고 Animator에 공중 콤보 상태가 있어야 한다. 횟수 제한은 없다.
     public bool CanAirAttack => !Movement.IsGrounded && AirComboCount > 0;
 
-    // 땅 위에서만 블로킹할 수 있고, 쿨타임이 끝난 뒤 새로 누른 입력이 있어야 한다.
+    // 블로킹을 얻어야 하며(보스 처치, 어느 보스인지 미정), 땅 위에서만 블로킹할 수 있고, 쿨타임이 끝난 뒤 새로 누른 입력이 있어야 한다.
     // 블로킹 중에는 재진입하지 않는다. (쿨타임은 블로킹이 끝날 때 시작되므로, 끝나는 프레임에 눌러 둔 입력으로 쿨타임 없이 다시 막지 못하게 한다)
-    public bool CanBlock => CurrentState != BlockState
+    public bool CanBlock => HasAbility(PlayerAbility.Block)
+        && CurrentState != BlockState
         && Movement.IsGrounded
         && Time.time >= _blockReadyTime
         && InputHandler.IsBlockBuffered(_blockReadyTime);
@@ -177,6 +189,21 @@ public class Player : Character
         && Movement.IsGrounded
         && Time.time >= _skillReadyTime
         && InputHandler.IsSkillBuffered(_skillReadyTime);
+
+    // 회복 아이템(물약·음식)을 장착해야 하며, 땅 위에서 위 방향키를 새로 눌렀고 지금도 누르고 있어야 한다. 체력이 가득 차 있으면 시작하지 않는다.
+    // 회복 중에는 재진입하지 않는다. (끝나거나 끊긴 뒤에는 키를 새로 눌러야 다시 시작한다)
+    public bool CanHeal => PlayerProfile.Current.IsHealItemEquipped
+        && CurrentState != HealState
+        && Movement.IsGrounded
+        && Vital.CurrentHealth < Vital.MaxHealth
+        && InputHandler.HasBufferedHeal
+        && InputHandler.IsHealHeld;
+
+    // 보스를 처치해 얻는 동작(GDD 3.6)을 얻었는지 여부. 얻지 못한 동작은 입력이 있어도 시작하지 않는다.
+    public bool HasAbility(PlayerAbility ability)
+    {
+        return PlayerProfile.Current.HasAbility(ability);
+    }
 
     // 초기화 순서: 컴포넌트 참조 → 스탯 적용 → 상태 생성 → Animator 설정. 이벤트 구독과 상태기계 시작은 OnInitCompleted에서 한다.
     protected override bool OnInit(BattleContext context)
@@ -241,6 +268,8 @@ public class Player : Character
         _isCinematicPlaying = false;
         _isCinematicAttackAllowed = false;
         _isCinematicComboAllowed = true;
+        _cinematicAttackInterval = 0f;
+        _nextCinematicAttackTime = float.NegativeInfinity;
         _isCinematicSliding = false;
         _isGamePaused = GameManager.HasInstance && GameManager.Instance.IsPaused;
         RefreshInputLock();
@@ -268,6 +297,8 @@ public class Player : Character
         _isCinematicPlaying = false;
         _isCinematicAttackAllowed = false;
         _isCinematicComboAllowed = true;
+        _cinematicAttackInterval = 0f;
+        _nextCinematicAttackTime = float.NegativeInfinity;
         _isCinematicSliding = false;
         _isGamePaused = false;
         InputHandler.SetLocked(false);
@@ -281,6 +312,8 @@ public class Player : Character
         _isCinematicPlaying = true;
         _isCinematicAttackAllowed = false;
         _isCinematicComboAllowed = true;
+        _cinematicAttackInterval = 0f;
+        _nextCinematicAttackTime = float.NegativeInfinity;
         RefreshInputLock();
     }
 
@@ -290,6 +323,8 @@ public class Player : Character
         _isCinematicPlaying = false;
         _isCinematicAttackAllowed = false;
         _isCinematicComboAllowed = true;
+        _cinematicAttackInterval = 0f;
+        _nextCinematicAttackTime = float.NegativeInfinity;
         _isCinematicSliding = false;
         RefreshInputLock();
     }
@@ -298,11 +333,29 @@ public class Player : Character
     // allowsCombo: 공격을 허용하는 동안 콤보(2타·3타)로 이어갈 수 있는지. false면 공격을 눌러도 항상 1타만 나간다. (1타가 끝난 뒤 다시 누르면 다시 1타)
     // 시네마틱을 연 쪽이 호출하며, 콤보를 막을지도 그쪽이 정한다. 시네마틱이 끝나면 공격 허용과 함께 콤보 설정도 기본값(허용)으로 돌아온다.
     // (Mushroom 반응속도 기믹: 제자리에서 1타의 타이밍만 겨루도록 콤보를 막는다)
-    public void SetCinematicAttackAllowed(bool isAllowed, bool allowsCombo)
+    // attackInterval: 공격을 시작한 뒤 다음 공격을 시작할 수 있기까지의 간격(초). 공격 동작 길이와 상관없이 이 시간이 지나야 다음 공격이 나간다.
+    // 이 동안 누른 공격 입력은 버려진다. (연타로 빠르게 반복하지 못하게 한다) 0이면 간격이 없다.
+    // 공격을 새로 허용할 때마다 간격은 새로 시작하므로, 허용한 직후의 첫 공격은 바로 나간다.
+    // 간격은 땅 위에서 새 공격을 시작할 때만 적용한다. 콤보 이어가기(allowsCombo)와 공중 공격에는 적용하지 않으므로, 간격을 쓰려면 콤보도 함께 막는다.
+    public void SetCinematicAttackAllowed(bool isAllowed, bool allowsCombo, float attackInterval)
     {
         _isCinematicAttackAllowed = isAllowed;
         _isCinematicComboAllowed = allowsCombo;
+        _cinematicAttackInterval = Mathf.Max(0f, attackInterval);
+        _nextCinematicAttackTime = float.NegativeInfinity;
         RefreshInputLock();
+    }
+
+    // 지금 새 공격을 시작할 수 없는지 여부. 시네마틱이 공격 간격을 정해 둔 동안, 마지막 공격을 시작한 뒤 간격이 아직 지나지 않았으면 true다. (PlayerState가 확인한다)
+    public bool IsAttackOnCooldown => _isCinematicPlaying && _isCinematicAttackAllowed && Time.time < _nextCinematicAttackTime;
+
+    // 공격을 시작할 때 PlayerAttackState가 호출한다. 시네마틱이 공격 간격을 정해 두었다면 다음 공격을 시작할 수 있는 시각을 정한다. 평소에는 아무것도 하지 않는다.
+    public void NotifyAttackStarted()
+    {
+        if (_isCinematicPlaying && _isCinematicAttackAllowed && _cinematicAttackInterval > 0f)
+        {
+            _nextCinematicAttackTime = Time.time + _cinematicAttackInterval;
+        }
     }
 
     // 시네마틱 중 플레이어를 targetX까지 duration초에 걸쳐 가로로 부드럽게 옮기고 facingDirection(오른쪽 1, 왼쪽 -1) 쪽을 보게 한다.
@@ -476,6 +529,12 @@ public class Player : Character
         _skillReadyTime = Time.time + _skillCooldown;
     }
 
+    // 체력 회복 동작이 끝까지 재생되었을 때 호출한다. 정해진 양만큼 체력을 회복한다. (피격 등으로 끊기면 호출되지 않는다)
+    public void CompleteHeal()
+    {
+        Vital.Heal(_healAmount);
+    }
+
     // 블로킹으로 공격을 막았을 때 호출한다. 짧은 슬로우 모션(피드백)과 소리를 재생한다.
     // 막았을 때 적에게 주는 불이익이나 플레이어가 얻는 이득은 기획이 정해지면 이 자리에 추가한다.
     public void PlayBlockSuccessEffects()
@@ -556,7 +615,7 @@ public class Player : Character
         }
     }
 
-    // 애니메이션이 끝나야 빠져나가는 상태(JumpStart, Hit, WallJump, Block, Skill1)는 Animator에 상태가 없으면 끝나지 않으므로 미리 알린다.
+    // 애니메이션이 끝나야 빠져나가는 상태(JumpStart, Hit, WallJump, Block, Skill1, Heal)는 Animator에 상태가 없으면 끝나지 않으므로 미리 알린다.
     // 나머지(Fall, WallSlide, Dash)는 상태가 없어도 멈추지는 않지만 모습이 바뀌지 않으므로 함께 확인한다.
     private void ValidateAnimationStates()
     {
@@ -568,6 +627,7 @@ public class Player : Character
         ValidateAnimationState(PlayerAnimation.Dash, "Dash");
         ValidateAnimationState(PlayerAnimation.Block, "Block");
         ValidateAnimationState(PlayerAnimation.Skill1, "Skill1");
+        ValidateAnimationState(PlayerAnimation.Heal, "Heal");
     }
 
     private void ValidateAnimationState(int stateHash, string stateName)
@@ -594,6 +654,7 @@ public class Player : Character
         HitState = new PlayerHitState(this, _stateMachine);
         BlockState = new PlayerBlockState(this, _stateMachine);
         SkillState = new PlayerSkillState(this, _stateMachine);
+        HealState = new PlayerHealState(this, _stateMachine);
         DeadState = new PlayerDeadState(this, _stateMachine);
     }
 

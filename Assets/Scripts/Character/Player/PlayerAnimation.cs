@@ -16,6 +16,7 @@ public class PlayerAnimation : CharacterAnimation
     public static readonly int Dash = Animator.StringToHash("Dash");
     public static readonly int Block = Animator.StringToHash("Block");
     public static readonly int Skill1 = Animator.StringToHash("Skill1");
+    public static readonly int Heal = Animator.StringToHash("Heal");
     public static readonly int Dead = Animator.StringToHash("Dead");
 
     [Header("벽타기 연출")]

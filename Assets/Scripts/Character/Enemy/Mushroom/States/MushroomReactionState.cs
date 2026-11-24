@@ -5,7 +5,7 @@ using UnityEngine;
 //  1) 자리 배치(Setup): 카메라가 줌인하는 동안(ReactionSetupDuration) Mushroom과 플레이어를 줌인한 화면의 양쪽 자리로 미끄러지듯 옮긴다.
 //     서로 마주 보게 하고, 둘 다 땅에 닿아 있어야 다음으로 넘어간다. (플레이어가 공중이면 착지할 때까지, 길어도 LandingWaitTimeout까지 기다린다) 조작은 모두 잠겨 있다.
 //  2) 대기(Wait): 발사 준비자세(Launch의 앞부분, Attack_3에서 멈춤)로 ReactionMinWait ~ ReactionMaxWait(2~10초) 중 무작위 시간을 기다린다.
-//     이때부터 플레이어는 공격만 할 수 있다. (이동·점프·대시는 잠김) 콤보는 막아 항상 1타만 나간다. 미리 공격해도 벌칙은 없지만 멀어서 닿지 않는다.
+//     이때부터 플레이어는 공격만 할 수 있다. (이동·점프·대시는 잠김) 콤보는 막아 항상 1타만 나가고, 한 번 공격하면 1초(PlayerAttackInterval) 동안 다시 공격할 수 없다. 미리 공격해도 벌칙은 없지만 멀어서 닿지 않는다.
 //  3) 발사(Launch): 플레이어가 서 있는 자리까지 바닥을 따라 ReactionLaunchSpeed로 날아간다.
 //     - 몸이 플레이어에게 닿기 전에 플레이어가 먼저 피해를 주면 성공: 그 자리에서 스턴에 걸린다. (Mushroom.ChangeToStun)
 //     - 먼저 닿으면 실패: 공격력의 3배 피해(ReactionDamage)를 입히고, 플레이어가 서 있던 자리까지 가서 멈춘 뒤 Idle로 쉰다.
@@ -32,6 +32,9 @@ public class MushroomReactionState : MushroomState
     private const float LandingWaitTimeout = 3f;
     // 발사가 도착에 걸릴 시간(거리 / 속도)보다 이만큼 더 지나도 끝나지 않으면 끝낸다. 발사 속도를 낮춰도 도착하기 전에 끊기지 않게 거리로 계산한다. (단위: 초)
     private const float LaunchTimeoutMargin = 0.5f;
+    // 대기 동안 플레이어가 공격을 시작한 뒤 다음 공격을 시작할 수 있기까지의 간격. 공격 동작 길이와 상관없이 항상 이 시간이다.
+    // 이 동안 누른 공격 입력은 버려진다. 연타로 공격을 빠르게 반복해 성공 타이밍을 우연히 맞히지 못하게 한다. (단위: 초)
+    private const float PlayerAttackInterval = 1f;
 
     private Phase _phase;
     // 자리 배치: 미끄러지기 시작한 가로 위치와 목표 위치(루트 위치 기준), 지난 시간(물리 스텝마다 더한다)
@@ -182,8 +185,8 @@ public class MushroomReactionState : MushroomState
 
         mushroom.FaceTarget();
         mushroom.Animation.Play(MushroomAnimation.Launch);
-        // 공격은 허용하되 콤보는 막아, 몇 번을 눌러도 1타만 나가게 한다.
-        mushroom.Target.SetCinematicAttackAllowed(true, false);
+        // 공격은 허용하되 콤보는 막아 1타만 나가게 하고, 한 번 공격하면 PlayerAttackInterval 동안 다시 공격하지 못하게 한다.
+        mushroom.Target.SetCinematicAttackAllowed(true, false, PlayerAttackInterval);
         mushroom.PlayReactionCharge();
     }
 

@@ -722,7 +722,7 @@ public class Mushroom : Enemy
         }
 
         _reactionCinematicHoldTime = _reactionResultHoldDuration;
-        Target.SetCinematicAttackAllowed(false, true);
+        Target.SetCinematicAttackAllowed(false, true, 0f);
     }
 
     // 임팩트 프레임을 풀에서 꺼내 hitPoint에 띄운다. 그림이 화면보다 크므로, 화면 가장자리가 비지 않는 범위(여유 ImpactFrameCoverMargin 포함) 안으로 중심을 옮긴다.

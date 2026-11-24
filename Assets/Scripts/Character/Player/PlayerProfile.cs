@@ -7,30 +7,42 @@ using UnityEngine;
 // 저장/불러오기는 현재 범위 밖(GDD 8장)이라 게임을 끄면 사라진다. 저장이 생기면 이 클래스를 그대로 직렬화한다.
 //
 // 담는 정보
-// - 이동 능력 해금(GDD 3.6): 대시, 벽타기, 벽 점프, 공중 점프의 획득 여부.
-//   아직 Player가 이 값을 확인하지 않으므로, 지금은 획득 여부와 관계없이 모든 능력을 쓸 수 있다. (해금을 구현할 때 연결한다)
+// - 동작 해금(GDD 3.6): 대시, 벽타기, 벽 점프, 공중 점프, 블로킹의 획득 여부. 처음에는 모두 없다.
+//   Player가 동작을 시작하기 전에 확인하므로, 얻지 못한 동작은 키를 눌러도 아무 일도 일어나지 않는다.
+//   보스 처치로 지급하는 흐름은 아직 없어, 지금은 BattleSceneInitialManager의 테스트용 설정으로만 얻는다.
+// - 회복 아이템 장착(GDD 3.4): 물약·음식을 장착해야 체력 회복을 쓸 수 있다. 장착 시스템이 없어 지금은 장착 여부만 둔다.
 // - 룬(GDD 5장, 예정): 획득한 룬 목록과 액티브·패시브 장착 상태를 이곳에 둔다.
 //   보관 한도·중복 획득·교체 시점이 기획 미정(GDD 9장)이라 아직 필드를 만들지 않는다.
 [Serializable]
 public class PlayerProfile
 {
-    [Tooltip("보스를 처치해 얻은 이동 능력입니다. (대시, 벽타기, 벽 점프, 공중 점프) 여러 개를 함께 가질 수 있습니다.")]
+    [Tooltip("보스를 처치해 얻은 동작입니다. (대시, 벽타기, 벽 점프, 공중 점프, 블로킹) 여러 개를 함께 가질 수 있습니다.")]
     [SerializeField] private PlayerAbility _unlockedAbilities = PlayerAbility.None;
+
+    [Tooltip("체력 회복에 쓰는 회복 아이템(물약·음식)을 장착했는지 여부입니다. 장착하지 않으면 체력 회복을 쓸 수 없습니다.")]
+    [SerializeField] private bool _isHealItemEquipped;
 
     public static PlayerProfile Current { get; private set; } = new PlayerProfile();
 
     public PlayerAbility UnlockedAbilities => _unlockedAbilities;
+    public bool IsHealItemEquipped => _isHealItemEquipped;
 
-    // 여러 능력을 한 번에 물으면 모두 가지고 있어야 true다. None을 물으면 false다.
+    // 여러 동작을 한 번에 물으면 모두 가지고 있어야 true다. None을 물으면 false다.
     public bool HasAbility(PlayerAbility ability)
     {
         return ability != PlayerAbility.None && (_unlockedAbilities & ability) == ability;
     }
 
-    // 이미 가진 능력을 다시 얻어도 그대로 유지된다.
+    // 이미 가진 동작을 다시 얻어도 그대로 유지된다.
     public void Unlock(PlayerAbility abilities)
     {
         _unlockedAbilities |= abilities;
+    }
+
+    // 회복 아이템 장착 상태를 바꾼다. 장착 시스템이 생기면 그쪽에서 호출하고, 회복량 등 아이템 정보도 함께 둔다.
+    public void SetHealItemEquipped(bool isEquipped)
+    {
+        _isHealItemEquipped = isEquipped;
     }
 
     // 에디터에서 도메인 리로드를 끄고 플레이해도 이전 플레이의 정보가 남지 않게 시작할 때마다 새로 만든다.

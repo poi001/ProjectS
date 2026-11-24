@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 // 전투 씬 시작 흐름을 담당한다. BattleManagers에 포함되어 전투 씬에만 존재한다.
-// 순서: 다른 전투 매니저 준비 대기 → 전투 구성 받기 → 캐릭터 생성 → 정해진 순서로 Init(플레이어 → 보스) → 체력바·보스 패턴 게이지 연결 → BattleReadyEvent 발행
+// 순서: 다른 전투 매니저 준비 대기 → 전투 구성 받기(테스트용 플레이어 해금 적용) → 캐릭터 생성 → 정해진 순서로 Init(플레이어 → 보스) → 체력바·보스 패턴 게이지 연결 → BattleReadyEvent 발행
 // 캐릭터는 Awake/Start에서 스스로 초기화하지 않으므로, 이 흐름이 끝나야 전투가 시작된다.
 // 로딩 화면 등은 BattleReadyEvent(또는 IsReady)를 기다렸다가 닫는다.
 // 전투 구성(어떤 플레이어·보스인지)은 원래 아웃게임에서 받아오지만, 아직 없으므로 인스펙터에 연결한 프리팹을 임시로 쓴다.
@@ -16,6 +16,13 @@ public class BattleSceneInitialManager : MonoBehaviour
 
     [Tooltip("소환할 보스 프리팹입니다. 아웃게임에서 정보를 받아오기 전까지 임시로 씁니다.")]
     [SerializeField] private Enemy _bossPrefab;
+
+    [Header("플레이어 해금 (테스트용, 임시)")]
+    [Tooltip("전투를 시작할 때 플레이어가 이미 얻은 것으로 칠 동작입니다. 보스 처치로 동작을 주는 흐름이 생기기 전까지 테스트용으로 씁니다.\n기본은 Nothing(모두 잠금, 실제 게임 시작과 같음)입니다. 벽 점프가 필요한 보스 등은 씬의 BattleManagers 인스턴스에서 필요한 동작만 골라 테스트합니다.")]
+    [SerializeField] private PlayerAbility _testUnlockedAbilities = PlayerAbility.None;
+
+    [Tooltip("전투를 시작할 때 회복 아이템(물약·음식)을 장착한 것으로 칠지 여부입니다. 장착 시스템이 생기기 전까지 테스트용으로 씁니다.\n끄면(기본) 체력 회복을 쓸 수 없습니다.")]
+    [SerializeField] private bool _testHealItemEquipped;
 
     [Header("소환 위치")]
     [Tooltip("플레이어를 소환할 위치입니다. 씬에 둔 스폰 포인트 오브젝트를 연결합니다.")]
@@ -59,6 +66,7 @@ public class BattleSceneInitialManager : MonoBehaviour
             return;
         }
 
+        ApplyTestPlayerProfile();
         CharacterSpawner spawner = CharacterSpawner.Instance;
 
         // 모두 생성한 뒤 정해진 순서로 Init한다. 보스는 Init할 때 플레이어를 타깃으로 받으므로 플레이어가 먼저다.
@@ -94,6 +102,19 @@ public class BattleSceneInitialManager : MonoBehaviour
 
         IsReady = true;
         EventBus<BattleReadyEvent>.Publish(new BattleReadyEvent(player, boss));
+    }
+
+    // 테스트용 해금·장착 값을 플레이어 정보에 넣는다. 이미 얻은 동작은 잃지 않는다. (보스 처치 지급과 장착 시스템이 생기면 없앤다)
+    // 플레이어 정보는 플레이를 시작할 때만 새로 만들어지므로, 한 번의 플레이 안에서 전투 씬을 다시 열면 앞에서 넣은 해금이 남는다.
+    private void ApplyTestPlayerProfile()
+    {
+        PlayerProfile profile = PlayerProfile.Current;
+        profile.Unlock(_testUnlockedAbilities);
+
+        if (_testHealItemEquipped)
+        {
+            profile.SetHealItemEquipped(true);
+        }
     }
 
     private bool ValidateSettings()

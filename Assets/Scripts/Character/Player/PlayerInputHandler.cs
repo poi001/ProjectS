@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// New Input System(PlayerInputActions)으로부터 키 입력을 받고, 점프/공격/대시/블로킹/스킬 입력을 버퍼에 보관한다.
+// New Input System(PlayerInputActions)으로부터 키 입력을 받고, 점프/공격/대시/블로킹/스킬/체력 회복 입력을 버퍼에 보관한다.
+// 체력 회복은 키를 누르고 있는 동안만 이어지므로, 누르기 시작한 입력(버퍼)과 누르고 있는지(IsHealHeld)를 따로 제공한다.
 // 버퍼: 입력이 조금 일찍 들어와도 버퍼 시간 안에 실행 가능해지면 처리되도록 마지막 입력 시각을 기억한다.
 // 입력 잠금(SetLocked): 시네마틱처럼 조작을 받지 않아야 할 때 켠다. 잠근 동안 이동 입력은 0으로 읽히고 점프/공격/대시/블로킹/스킬 입력은 버려진다.
 // 키 입력 자체는 계속 받아 두므로, 방향키를 누른 채로 잠금이 풀리면 다시 누르지 않아도 바로 움직인다.
@@ -17,6 +18,8 @@ public class PlayerInputHandler : MonoBehaviour
     [SerializeField] private float _blockBufferTime = 0.15f;
     [Tooltip("스킬 입력을 기억해 두는 시간입니다. 쿨타임이 끝난 뒤 누른 입력만 유효하며, 쿨타임 중 누른 입력은 다음 스킬로 예약되지 않습니다. (단위: 초)")]
     [SerializeField] private float _skillBufferTime = 0.15f;
+    [Tooltip("체력 회복 입력(위 방향키를 누르기 시작한 순간)을 기억해 두는 시간입니다. 다른 동작이 끝나는 순간에 맞춰 눌러도 회복이 시작되게 하며, 시작할 때 키를 아직 누르고 있어야 합니다. (단위: 초)")]
+    [SerializeField] private float _healBufferTime = 0.15f;
 
     private PlayerInputActions _inputActions;
     private float _lastJumpPressedTime = float.NegativeInfinity;
@@ -24,6 +27,7 @@ public class PlayerInputHandler : MonoBehaviour
     private float _lastDashPressedTime = float.NegativeInfinity;
     private float _lastBlockPressedTime = float.NegativeInfinity;
     private float _lastSkillPressedTime = float.NegativeInfinity;
+    private float _lastHealPressedTime = float.NegativeInfinity;
 
     // 실제로 눌려 있는 이동 입력. 잠금 중에도 갱신해 두었다가 잠금이 풀리면 그대로 쓴다.
     private float _rawMoveInput;
@@ -41,6 +45,12 @@ public class PlayerInputHandler : MonoBehaviour
     // 공격 버퍼 시간 안에 눌린 공격 입력이 아직 소비되지 않고 남아 있는지 여부
     public bool HasBufferedAttack => IsAttackBuffered(0f);
 
+    // 체력 회복 버퍼 시간 안에 위 방향키를 누르기 시작했고 아직 소비되지 않았는지 여부
+    public bool HasBufferedHeal => Time.time - _lastHealPressedTime <= _healBufferTime;
+
+    // 체력 회복 키(위 방향키)를 지금 누르고 있는지 여부. 잠겨 있으면 누르고 있어도 false다.
+    public bool IsHealHeld => !IsLocked && _inputActions.Player.Heal.IsPressed();
+
     private void Awake()
     {
         _inputActions = new PlayerInputActions();
@@ -55,6 +65,7 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Player.Dash.started += OnDash;
         _inputActions.Player.Block.started += OnBlock;
         _inputActions.Player.Skill.started += OnSkill;
+        _inputActions.Player.Heal.started += OnHeal;
         _inputActions.Player.Enable();
     }
 
@@ -68,12 +79,14 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Player.Dash.started -= OnDash;
         _inputActions.Player.Block.started -= OnBlock;
         _inputActions.Player.Skill.started -= OnSkill;
+        _inputActions.Player.Heal.started -= OnHeal;
         _rawMoveInput = 0f;
         ConsumeJumpBuffer();
         ConsumeAttackBuffer();
         ConsumeDashBuffer();
         ConsumeBlockBuffer();
         ConsumeSkillBuffer();
+        ConsumeHealBuffer();
     }
 
     private void OnDestroy()
@@ -81,7 +94,7 @@ public class PlayerInputHandler : MonoBehaviour
         _inputActions.Dispose();
     }
 
-    // 입력을 잠그거나 푼다. 잠그는 순간 버퍼에 남은 점프/공격/대시/블로킹/스킬 입력도 버려서, 잠금이 풀린 뒤에 뒤늦게 실행되지 않게 한다.
+    // 입력을 잠그거나 푼다. 잠그는 순간 버퍼에 남은 점프/공격/대시/블로킹/스킬/체력 회복 입력도 버려서, 잠금이 풀린 뒤에 뒤늦게 실행되지 않게 한다.
     public void SetLocked(bool isLocked)
     {
         if (IsLocked == isLocked)
@@ -98,6 +111,7 @@ public class PlayerInputHandler : MonoBehaviour
             ConsumeDashBuffer();
             ConsumeBlockBuffer();
             ConsumeSkillBuffer();
+            ConsumeHealBuffer();
         }
     }
 
@@ -171,6 +185,12 @@ public class PlayerInputHandler : MonoBehaviour
         return _lastSkillPressedTime >= earliestPressTime && Time.time - _lastSkillPressedTime <= _skillBufferTime;
     }
 
+    // 체력 회복 입력을 소비한다. 한 번 눌러서 회복이 중복으로 시작되지 않도록 한다. (회복이 끝나거나 끊긴 뒤에는 키를 새로 눌러야 다시 시작한다)
+    public void ConsumeHealBuffer()
+    {
+        _lastHealPressedTime = float.NegativeInfinity;
+    }
+
     private void OnMove(InputAction.CallbackContext context)
     {
         _rawMoveInput = context.ReadValue<float>();
@@ -224,5 +244,15 @@ public class PlayerInputHandler : MonoBehaviour
         }
 
         _lastSkillPressedTime = Time.time;
+    }
+
+    private void OnHeal(InputAction.CallbackContext context)
+    {
+        if (IsLocked)
+        {
+            return;
+        }
+
+        _lastHealPressedTime = Time.time;
     }
 }

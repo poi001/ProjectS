@@ -25,7 +25,7 @@ public abstract class PlayerState : State<Player>
         owner.Animation.UpdateFacing(GetMoveInput());
     }
 
-    // 땅 위 상태로 돌아갈 때 점프 > 대시 > 공격 > 스킬 > 블로킹 > 이동 여부(Run/Idle) 순으로 다음 상태를 고른다.
+    // 땅 위 상태로 돌아갈 때 점프 > 대시 > 공격 > 스킬 > 블로킹 > 체력 회복 > 이동 여부(Run/Idle) 순으로 다음 상태를 고른다.
     // 착지/공격 종료 프레임에 들어온 입력도 놓치지 않기 위함이다.
     // attackBufferExtraTime: 애니메이션 종료를 늦게 감지한 만큼 공격 버퍼 시간을 늘려서 확인한다.
     protected void ChangeToGroundedState(float attackBufferExtraTime = 0f)
@@ -38,7 +38,7 @@ public abstract class PlayerState : State<Player>
         stateMachine.ChangeState(IsMoving() ? owner.RunState : owner.IdleState);
     }
 
-    // 땅 위에서 입력으로 시작하는 동작(점프 > 대시 > 공격 > 스킬 > 블로킹)으로 전환한다. 전환했다면 true를 반환한다.
+    // 땅 위에서 입력으로 시작하는 동작(점프 > 대시 > 공격 > 스킬 > 블로킹 > 체력 회복)으로 전환한다. 전환했다면 true를 반환한다.
     private bool TryChangeToGroundedAction(float attackBufferExtraTime)
     {
         if (owner.CanJump)
@@ -52,16 +52,15 @@ public abstract class PlayerState : State<Player>
             return true;
         }
 
-        if (owner.InputHandler.IsAttackBuffered(attackBufferExtraTime))
+        if (TryChangeToAttackState(attackBufferExtraTime))
         {
-            stateMachine.ChangeState(owner.AttackState);
             return true;
         }
 
-        return TryChangeToSkillState() || TryChangeToBlockState();
+        return TryChangeToSkillState() || TryChangeToBlockState() || TryChangeToHealState();
     }
 
-    // 땅 위에서 동작의 끝부분(공격 복귀 동작 등)을 입력으로 끊을 때 쓴다. 점프 > 대시 > 공격 > 스킬 > 블로킹 > 이동(Run) 순으로 확인한다.
+    // 땅 위에서 동작의 끝부분(공격 복귀 동작 등)을 입력으로 끊을 때 쓴다. 점프 > 대시 > 공격 > 스킬 > 블로킹 > 체력 회복 > 이동(Run) 순으로 확인한다.
     // 입력이 없으면 전환하지 않고 false를 반환한다. (발밑이 사라져도 낙하로 넘어가지 않는다. 동작이 끝난 뒤에 처리한다)
     protected bool TryInterruptOnGround()
     {
@@ -100,6 +99,18 @@ public abstract class PlayerState : State<Player>
         }
 
         stateMachine.ChangeState(owner.BlockState);
+        return true;
+    }
+
+    // 체력 회복 입력(위 방향키를 새로 누르고 계속 누르는 중)이 있고 회복할 수 있으면(땅 위) 체력 회복을 시작한다. 전환했다면 true를 반환한다.
+    protected bool TryChangeToHealState()
+    {
+        if (!owner.CanHeal)
+        {
+            return false;
+        }
+
+        stateMachine.ChangeState(owner.HealState);
         return true;
     }
 
@@ -148,8 +159,14 @@ public abstract class PlayerState : State<Player>
     // 공중에서 벽 쪽으로 이동 키를 누르고 있고 그쪽 벽에 닿아 있으면 벽타기로 전환한다. 전환했다면 true를 반환한다.
     // 올라가는 중에는 붙지 않는다. (벽 옆에서 뛰어오르는 점프가 끊기지 않게 하고, 벽 점프 직후 같은 벽에 다시 붙지 않게 한다)
     // 마지막으로 벽 점프한 벽에는 붙지 않는다. (같은 벽에서 벽 점프를 반복해 계속 오르지 못하게 한다)
+    // 벽타기를 얻지 못했으면(Knight 처치) 벽에 닿아도 붙지 않는다.
     protected bool TryChangeToWallSlideState()
     {
+        if (!owner.HasAbility(PlayerAbility.WallSlide))
+        {
+            return false;
+        }
+
         if (owner.Movement.IsGrounded || !IsMoving() || owner.Movement.Velocity.y > 0f)
         {
             return false;
@@ -188,7 +205,7 @@ public abstract class PlayerState : State<Player>
         return owner.InputHandler.IsAttackBuffered(timeSinceFinished);
     }
 
-    // Idle/Run 공통 전환(점프, 대시, 낙하, 공격, 스킬, 블로킹). 전환했다면 true를 반환한다.
+    // Idle/Run 공통 전환(점프, 대시, 낙하, 공격, 스킬, 블로킹, 체력 회복). 전환했다면 true를 반환한다.
     protected bool TryChangeFromGroundedState()
     {
         if (owner.CanJump)
@@ -208,12 +225,32 @@ public abstract class PlayerState : State<Player>
             return true;
         }
 
-        if (owner.InputHandler.HasBufferedAttack)
+        if (TryChangeToAttackState(0f))
         {
-            stateMachine.ChangeState(owner.AttackState);
             return true;
         }
 
-        return TryChangeToSkillState() || TryChangeToBlockState();
+        return TryChangeToSkillState() || TryChangeToBlockState() || TryChangeToHealState();
+    }
+
+    // 땅 위 공격 입력이 있으면 공격 상태로 전환한다. 전환했다면 true를 반환한다.
+    // 시네마틱이 공격 간격을 정해 둔 동안(Mushroom 반응속도 기믹)에는 간격이 지나기 전에 누른 입력을 버리고 false를 반환한다.
+    // 입력을 버리지 않으면 간격이 끝나는 순간 그동안 누른 연타가 한꺼번에 나가므로, 누른 즉시 버려 간격 뒤에 새로 눌러야 하게 한다.
+    // attackBufferExtraTime: 애니메이션 종료를 늦게 감지한 만큼 공격 버퍼 시간을 늘려서 확인한다.
+    private bool TryChangeToAttackState(float attackBufferExtraTime)
+    {
+        if (!owner.InputHandler.IsAttackBuffered(attackBufferExtraTime))
+        {
+            return false;
+        }
+
+        if (owner.IsAttackOnCooldown)
+        {
+            owner.InputHandler.ConsumeAttackBuffer();
+            return false;
+        }
+
+        stateMachine.ChangeState(owner.AttackState);
+        return true;
     }
 }

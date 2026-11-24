@@ -87,7 +87,7 @@ public class PlayerJumpAttackState : PlayerState
         // 애니메이션 종료를 늦게 감지한 만큼 보정해서, 실제 종료 시각 기준으로 공격 버퍼 시간을 적용한다.
         float timeSinceFinished = owner.Animation.GetTimeSinceFinished(finishedAnimationHash);
 
-        // 공격 중 착지했더라도 동작을 끝까지 재생한 뒤, 땅 위 상태 규칙(점프 > 대시 > 공격 > 스킬 > 블로킹 > Run/Idle)에 따라 전환한다.
+        // 공격 중 착지했더라도 동작을 끝까지 재생한 뒤, 땅 위 상태 규칙(점프 > 대시 > 공격 > 스킬 > 블로킹 > 체력 회복 > Run/Idle)에 따라 전환한다.
         if (owner.Movement.IsGrounded)
         {
             ChangeToGroundedState(timeSinceFinished);

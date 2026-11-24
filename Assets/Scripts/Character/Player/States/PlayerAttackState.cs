@@ -3,6 +3,7 @@ using System;
 // 지상 기본 공격 상태. 콤보 1 → 2 → ... 순으로 이어지며, 이어가지 않으면 그 타의 복귀 동작(Combo{n}_End)을 재생한 뒤 Idle/Run으로 돌아간다.
 // 복귀 동작은 입력으로 끊을 수 있다. 재생 중에 점프·대시·공격·스킬·블로킹·이동 입력이 들어오면 바로 그 동작으로 넘어간다. (PlayerState.TryInterruptOnGround)
 // 콤보 수는 Player.ComboCount를 따른다. 공격 중에는 멈춰 있고 방향도 바뀌지 않는다.
+// 시네마틱이 공격 간격을 정해 둔 동안에는 공격을 시작한 뒤 그 간격이 지나기 전까지 새 공격을 시작하지 못한다. (Player.IsAttackOnCooldown, PlayerState가 확인한다)
 // 데미지 판정은 콤보 클립의 애니메이션 이벤트(타격 프레임)마다 현재 콤보의 판정과 계수로 한 번씩 한다.
 public class PlayerAttackState : PlayerState
 {
@@ -29,6 +30,8 @@ public class PlayerAttackState : PlayerState
         owner.InputHandler.ConsumeAttackBuffer();
         owner.Movement.Move(0f);
         owner.Animation.Play(CurrentComboHash);
+        // 시네마틱이 공격 간격을 정해 두었다면(Mushroom 반응속도 기믹) 다음 공격을 시작할 수 있는 시각을 정한다.
+        owner.NotifyAttackStarted();
     }
 
     public override void Exit()
